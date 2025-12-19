@@ -92,3 +92,6 @@ coverage/
 
 # pubspec.lock - uncomment if you want to ignore it
 pubspec.lock
+
+# Plugins folder - contains large binary files
+plugins/
