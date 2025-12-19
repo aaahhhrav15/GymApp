@@ -1,0 +1,1176 @@
+{
+  "@@locale": "en",
+  
+  "appTitle": "Mr Muscle",
+  "@appTitle": {
+    "description": "The application title"
+  },
+
+  "home": "Home",
+  "todayReport": "Today Report",
+  "reportFor": "Report for {date}",
+  "@reportFor": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "profile": "Profile",
+  "discover": "Discover",
+  "analytics": "Analytics",
+  "more": "More",
+
+  "goodMorning": "Good Morning",
+  "goodAfternoon": "Good Afternoon",
+  "goodEvening": "Good Evening",
+  "goodNight": "Good Night",
+
+  "welcome": "Welcome",
+  "welcomeBack": "Welcome Back",
+  "getStarted": "Get Started",
+  "letsBegin": "Let's Begin",
+  "unknown": "Unknown",
+
+  "steps": "Steps",
+  "stepsToday": "Steps Today",
+  "dailyGoal": "Daily Goal",
+  "stepCounter": "Step Counter",
+  "stepsRemaining": "steps remaining",
+  "goalAchieved": "Goal Achieved!",
+  "keepGoing": "Keep Going!",
+  "walking": "Walking",
+  "stopped": "Stopped",
+  "tracking": "Tracking",
+
+  "water": "Water",
+  "waterIntake": "Water Intake",
+  "glasses": "Glasses",
+  "glassesLeft": "glasses left",
+  "stayHydrated": "Stay Hydrated",
+  "drinkWater": "Drink Water",
+
+  "sleep": "Sleep",
+  "sleepTracking": "Sleep Tracking",
+  "hours": "hours",
+  "sleepQuality": "Sleep Quality",
+  "goodSleep": "Good Sleep",
+  "bedtime": "Bedtime",
+  "wakeUp": "Wake up",
+  "excellent": "Excellent",
+  "good": "Good",
+  "fair": "Fair",
+  "poor": "Poor",
+  "veryPoor": "Very Poor",
+
+  "bmi": "BMI",
+  "bmiCalculator": "BMI Calculator",
+  "bodyMassIndex": "Body Mass Index",
+  "calculate": "Calculate",
+  "height": "Height",
+  "weight": "Weight",
+  "age": "Age",
+  "gender": "Gender",
+  "male": "Male",
+  "female": "Female",
+
+  "workouts": "Workouts",
+  "workoutPlans": "Workout Plans",
+  "myWorkouts": "My Workouts",
+  "startWorkout": "Start Workout",
+  "exercises": "Exercises",
+  "sets": "Sets",
+  "reps": "Reps",
+  "duration": "Duration",
+  "restTime": "Rest Time",
+  "completed": "Completed",
+  "workoutPlan": "Workout Plan",
+  "knowYourWorkoutPlans": "Know your workout plans",
+
+  "nutrition": "Nutrition",
+  "recipes": "Recipes",
+  "allRecipes": "All Recipes",
+  "ingredients": "Ingredients",
+  "cookingSteps": "Cooking Steps",
+  "prepTime": "Prep Time",
+  "cookTime": "Cook Time",
+  "servings": "Servings",
+  "calories": "Calories",
+  "protein": "Protein",
+  "carbs": "Carbs",
+  "fat": "Fat",
+  "meals": "Meals",
+  "loadingNutritionData": "Loading nutrition data...",
+  "healthyRecipes": "Healthy Recipes",
+  "viewYourPersonalizedDiet": "View Your Personalized Diet",
+  "todaysResult": "Today's Result",
+
+  "bodyComposition": "Body Composition",
+  "muscleMass": "Muscle Mass",
+  "bodyFat": "Body Fat",
+  "bodyWater": "Body Water",
+  "boneMass": "Bone Mass",
+  "visceralFat": "Visceral Fat",
+
+  "awareness": "Awareness",
+  "articles": "Articles",
+  "readMore": "Read More",
+  "learnMore": "Learn More",
+
+  "products": "Products",
+  "shop": "Shop",
+  "addToCart": "Add to Cart",
+  "cart": "Cart",
+  "checkout": "Checkout",
+  "price": "Price",
+  "buy": "Buy",
+
+  "account": "Account",
+  "settings": "Settings",
+  "language": "Language",
+  "selectLanguage": "Select Language",
+  "english": "English",
+  "hindi": "Hindi",
+  "theme": "Theme",
+  "darkMode": "Dark Mode",
+  "lightMode": "Light Mode",
+
+  "login": "Login",
+  "register": "Register",
+  "logout": "Logout",
+  "email": "Email",
+  "password": "Password",
+  "confirmPassword": "Confirm Password",
+  "forgotPassword": "Forgot Password?",
+  "dontHaveAccount": "Don't have an account?",
+  "alreadyHaveAccount": "Already have an account?",
+  "welcomeBack": "Welcome Back! 👋",
+  "verifyYourPhone": "Verify Your Phone 📱",
+  "enterPhoneToSignIn": "Enter your phone number to sign in to your account",
+  "verificationCodeSent": "We sent a verification code to",
+  "phoneNumber": "Phone Number",
+  "enterYourPhoneNumber": "Enter your phone number",
+  "enterOtp": "Enter OTP",
+  "enterSixDigitOtp": "Enter 6-digit OTP",
+  "sendOtp": "Send OTP",
+  "resendCodeIn": "Resend code in",
+  "didntReceiveCode": "Didn't receive the code?",
+  "resend": "Resend",
+  "signUp": "Sign Up",
+  "termsAcceptanceRequired": "Terms acceptance is required to proceed",
+  "termsAccepted": "Terms accepted on login screen",
+  "agreeToTerms": "I agree to the Terms and Conditions",
+  "phoneNotRegistered": "Phone Number Not Registered",
+  "phoneNotInCrm": "This phone number is not registered in our CRM system.",
+  "contactClubHead": "Please contact your club head to register your phone number in the system.",
+  "whereverYouAre": "Wherever You Are",
+  "health": "Health",
+  "isNumberOne": " Is Number One",
+  "noInstantWay": "There is no instant way to a healthy life",
+  "getStarted": "Get Started",
+  "addImageToAssets": "Add your image to\nassets/images/fitness_women.jpg",
+    "fitnessStrengthPower": "FITNESS • STRENGTH • POWER",
+  "stepsDetails": "Steps Details",
+  "usingSimulatedStepData": "Using Simulated Step Data",
+  "simulatedStepDataMessage": "The app is currently using simulated step data because device step tracking is not available. Grant activity recognition permission to use your phone's built-in pedometer for accurate step counting.",
+  "enableRealSteps": "Enable Real Steps",
+  "attemptingToSetupStepTracking": "Attempting to setup step tracking...",
+  "errorSettingUpStepTracking": "Error setting up step tracking: {error}",
+  "steps": "Steps",
+  "todaysCount": "Today's Count",
+  "dayCount": "{day}'s Count",
+  "goalAchieved": "Goal Achieved!",
+  "stepsToGoal": "{steps} steps to goal",
+  "walking": "Walking",
+  "stopped": "Stopped",
+  "trackingSteps": "Tracking Steps",
+  "mon": "Mon",
+  "tue": "Tue",
+  "wed": "Wed",
+  "thu": "Thu",
+  "fri": "Fri",
+  "sat": "Sat",
+  "sun": "Sun",
+  "share": "Share",
+  "setGoal": "Set Goal ({goal})",
+  "shareSteps": "Share Steps",
+  "setGoalTitle": "Set Goal",
+  "refreshData": "Refresh Data",
+  "dataRefreshed": "Data refreshed!",
+  "viewHistory": "View History",
+  "statistics": "Statistics",
+  "setDailyGoal": "Set Daily Goal",
+  "dailyStepsGoal": "Daily Steps Goal",
+  "egTenThousand": "e.g., 10000",
+  "cancelButton": "Cancel",
+  "goalUpdatedTo": "Goal updated to {goal} steps!",
+  "comingSoon": "{feature} coming soon!",
+  "hourlySteps": "Hourly Steps",
+  "today": "today",
+  "on": "on",
+  
+  "stayHydrated": "Stay Hydrated",
+  "goal": "Goal",
+  "completed": "Completed",
+  "remaining": "remaining",
+  "waterIntake": "water intake",
+  "quickAdd": "Quick Add",
+  "customAmount": "Custom Amount",
+  "todaysIntake": "Today's Intake",
+  "noIntakeYet": "No intake yet today",
+  "startDrinking": "Start drinking water!",
+  "addedWaterSuccessfully": "Added {amount}ml water successfully!",
+  "waterIntakeRemovedSuccessfully": "Water intake removed successfully!",
+  "failedToAddWater": "Failed to add water",
+  "failedToRemoveWater": "Failed to remove water",
+  "failedToUpdateGoal": "Failed to update goal",
+  "todaysIntakeHasBeenReset": "Today's intake has been reset",
+  "failedToResetIntake": "Failed to reset intake",
+  "addCustomAmount": "Add Custom Amount",
+  "enterWaterAmount": "Enter the amount of water you drank",
+  "amountMl": "Amount (ml)",
+  "egAmount": "e.g., 350",
+  "typeOptional": "Type (optional)",
+  "egPostWorkout": "e.g., Post-workout, With meal",
+  "add": "Add",
+  "deleteIntake": "Delete Intake",
+  "deleteIntakeConfirmation": "Are you sure you want to remove this water intake entry?",
+  "goalAchievedTitle": "🎉 Goal Achieved!",
+  "goalAchievedMessage": "Congratulations! You've reached your daily water goal of {goal}ml. Keep up the great hydration!",
+  "awesome": "Awesome!",
+  "setDailyGoal": "Set Daily Goal",
+  "currentGoal": "Current: {goal}ml",
+  "@currentGoal": {
+    "placeholders": {
+      "goal": {
+        "type": "int"
+      }
+    }
+  },
+  "viewStatistics": "View Statistics",
+  "seeHydrationStats": "See your hydration stats",
+  "resetToday": "Reset Today",
+  "clearAllIntake": "Clear all intake for today",
+  "viewHistory": "View History",
+  "seePastDaysIntake": "See past days intake",
+  "setYourDailyWaterGoal": "Set your daily water intake goal",
+  "dailyWaterGoal": "Daily Water Goal (ml)",
+  "recommendedAmount": "Recommended: 2000-3000ml",
+  "setGoalButton": "Set Goal",
+  "goalUpdatedSuccessfully": "Goal updated successfully!",
+  "resetTodayTitle": "Reset Today's Intake",
+  "resetTodayConfirmation": "Are you sure you want to reset all water intake for today? This action cannot be undone.",
+  "reset": "Reset",
+  "waterStatistics": "Water Statistics",
+  "loadingStatistics": "Loading statistics...",
+  "totalIntake": "Total Intake",
+  "averageDaily": "Average Daily",
+  "bestDay": "Best Day",
+  "currentStreak": "Current Streak",
+  "days": "days",
+  "completionPercentage": "{percentage}% of daily goal",
+  "failedToLoadStatistics": "Failed to load statistics: {error}",
+  "waterIntakeHistory": "Water Intake History",
+  "noHistoryAvailable": "No history available",
+  "startTrackingHistory": "Start tracking to see your history",
+  "almostThere": "Almost there!",
+  "goalAchievedStatus": "Goal Achieved!",
+  "excellent": "Excellent!",
+  "keepItUp": "Keep it up!",
+  "drinksCount": "{count} drinks",
+  "@drinksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pleaseEnterValidAmount": "Please enter a valid amount (1-2000ml)",
+  "deleteWaterIntake": "Delete Water Intake",
+  "deleteWaterIntakeConfirm": "Are you sure you want to delete {amount}ml intake from {time}?",
+  "@deleteWaterIntakeConfirm": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "delete": "Delete",
+  "hydrationGoalAchieved": "Hydration Goal Achieved! 🎉",
+  "greatJobReachedGoal": "Great job! You've reached your daily water intake goal of {goal}ml.",
+  "@greatJobReachedGoal": {
+    "placeholders": {
+      "goal": {
+        "type": "int"
+      }
+    }
+  },
+  "energyDipFighter": "Energy Dip Fighter ⚡",
+  "beatAfternoonSlump": "Beat the afternoon slump with water",
+  "dehydrationCausesFatigue": "Dehydration can cause fatigue",
+  "morningBooster": "Morning Booster ☀️",
+  "startDayHydrated": "Start your day hydrated",
+  "waterJumpstartsMetabolism": "Water jumpstarts your metabolism",
+  "preworkoutHydration": "Pre-Workout Hydration 💪",
+  "stayHydratedDuringExercise": "Stay hydrated during exercise",
+  "waterImprovesPerformance": "Water improves performance",
+  "bedtimeHydration": "Bedtime Hydration 🌙",
+  "drinkWaterBeforeSleep": "Drink water before sleep",
+  "hydrationSupportsRecovery": "Hydration supports recovery",
+  "stayOnTrack": "Stay on Track! 🎯",
+  "keepUpGoodWork": "Keep up the good work",
+  "consistencyIsKey": "Consistency is key to health",
+  "hydrationStatistics": "Hydration Statistics",
+  "currentStreakDays": "Current Streak",
+  "goalAchievement": "Goal Achievement",
+  "goalAchievementDays": "{achieved}/{total} days",
+  "@goalAchievementDays": {
+    "placeholders": {
+      "achieved": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "averageDailyIntake": "Average Daily",
+  "thisWeekTotal": "This Week Total",
+  "todaysProgress": "Today's Progress",
+  "percentOfDailyGoal": "{percentage}% of daily goal",
+  "@percentOfDailyGoal": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
+  "close": "Close",
+  "waterIntakeHistoryTitle": "Water Intake History",
+
+  "sleepReport": "Sleep Report",
+  "todaysSleep": "Today's Sleep",
+  "hSleep": "{hours}h Sleep",
+  "@hSleep": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "greatSleepQuality": "Great Sleep Quality!",
+  "percentQuality": "{quality}% Quality",
+  "@percentQuality": {
+    "placeholders": {
+      "quality": {
+        "type": "int"
+      }
+    }
+  },
+  "sleepQuality": "Sleep Quality",
+  "weekly": "Weekly",
+  "monthly": "Monthly",
+  "setSleepSchedule": "Set Sleep Schedule",
+  "setSleepTarget": "Set Sleep Target",
+  "setSleepTargetWithTime": "Set Sleep Target ({time})",
+  "@setSleepTargetWithTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "sleepReminders": "Sleep Reminders",
+  "shareSleepData": "Share Sleep Data",
+  "setYourIdealBedtimeAndWakeup": "Set your ideal bedtime and wake-up time",
+  "bedtime": "Bedtime",
+  "wakeUp": "Wake Up",
+  "sleepDuration": "Sleep Duration: {hours}h {minutes}m",
+  "@sleepDuration": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "saveSchedule": "Save Schedule",
+  "sleepScheduleUpdatedSuccessfully": "Sleep schedule updated successfully!",
+  "pleaseEnterValidTimes": "Please enter valid times (hours: 0-23, minutes: 0-59)",
+  "setYourIdealSleepDuration": "Set your ideal sleep duration goal",
+  "sleepTarget": "Sleep Target",
+  "hours": "Hours",
+  "minutes": "Minutes",
+  "target": "Target: {time}",
+  "@target": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "sleepTargetSetTo": "Sleep target set to {time}!",
+  "@sleepTargetSetTo": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "pleaseEnterValidHoursAndMinutes": "Please enter valid hours (4-12) and minutes (0-59)",
+  "setTarget": "Set Target",
+  "sleepDurationLabel": "Sleep Duration",
+  "sleepQualityLabel": "Sleep Quality",
+  "deepSleep": "Deep Sleep",
+  "hoursLabel": "hours",
+  "deepSleepHours": "{hours} hours",
+  "@deepSleepHours": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+
+  "bmiCalculator": "BMI Calculator",
+  "calculate": "Calculate",
+  "recheck": "Recheck",
+  "male": "Male",
+  "female": "Female",
+  "heightInCm": "Height (in cm)",
+  "weightInKg": "Weight (in kg)",
+  "age": "Age",
+  "underweight": "Underweight",
+  "normal": "Normal",
+  "overweight": "Overweight",
+  "obese": "Obese",
+  "yourBMI": "Your BMI",
+  "bmiResult": "BMI Result",
+  "healthyRange": "Healthy Range: 18.5 - 24.9",
+  "yourBMIis": "Your BMI is",
+  "bmiUnderweightDescription": "A BMI less than 18.5 indicates that you may be underweight. It's important to consult with a healthcare provider.",
+  "bmiNormalDescription": "A BMI of 18.5 - 24.9 indicates that you are at a healthy weight for your height. By maintaining a healthy weight, you lower your risk of developing serious health problems.",
+  "bmiOverweightDescription": "A BMI of 25 - 29.9 indicates that you may be overweight. Consider consulting with a healthcare provider about healthy weight management.",
+  "bmiObeseDescription": "A BMI of 30 or higher indicates obesity. It's recommended to consult with a healthcare provider about healthy weight management strategies.",
+  "medicalReferences": "Medical References",
+  "viewMedicalReferences": "View Medical References",
+
+  "editProfile": "Edit Profile",
+  "profilePicture": "Profile Picture",
+  "camera": "Camera",
+  "gallery": "Gallery",
+  "editableInformation": "Editable Information",
+  "save": "Save",
+  "name": "Name",
+  "phoneNumber": "Phone Number",
+  "weight": "Weight (kg)",
+  "height": "Height (cm)",
+  "readOnlyInformation": "Read-Only Information",
+  "clubCode": "Club Code",
+  "joinDate": "Join Date",
+  "membershipDuration": "Membership Duration",
+  "membershipFees": "Membership Fees",
+  "months": "{count} months",
+  "@months": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "unsavedChanges": "Unsaved Changes",
+  "unsavedChangesMessage": "You have unsaved changes. Do you want to discard them?",
+  "cancel": "Cancel",
+  "discard": "Discard",
+  "nameIsRequired": "Name is required",
+  "phoneNumberIsRequired": "Phone number is required",
+  "profileUpdatedSuccessfully": "Profile updated successfully",
+  "failedToUpdateProfile": "Failed to update profile",
+
+  "accountability": "Accountability",
+  "myProgress": "My Progress",
+  "uploadNew": "Upload New",
+  "upload": "Upload",
+  "selectImageSource": "Select Image Source",
+  "noDescription": "No description",
+  "report": "Report",
+  "blockUser": "Block User",
+  "delete": "Delete",
+  "deleteImage": "Delete Image",
+  "deleteImageConfirmation": "Are you sure you want to delete this image? This action cannot be undone.",
+  "imageDeletedSuccessfully": "Image deleted successfully",
+  "failedToDeleteImage": "Failed to delete image",
+  "cannotDeleteInvalidId": "Cannot delete: Invalid image ID",
+  "imageNotAvailable": "Image not available",
+  "noImagesSelected": "No images selected",
+  "tapButtonToAddPhotos": "Tap the + button below to add\nprogress photos with description",
+  "tapHereToStart": "Tap here to start",
+
+  "results": "Results",
+  "myResults": "My Results",
+  "uploadResult": "Upload Result",
+  "noResultsYet": "No results yet",
+  "uploadFirstProgressPhoto": "Upload your first progress photo to get started!",
+  "addImages": "Add Images",
+  "description": "Description",
+  "describeYourProgress": "Describe your progress...",
+  "currentWeight": "Current Weight",
+  "uploading": "Uploading...",
+  "resultDeletedSuccessfully": "Result deleted successfully",
+  "failedToDeleteResult": "Failed to delete result",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "daysAgo": "{count} days ago",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "myDietPlan": "My Diet Plan",
+  "yourPersonalizedNutritionGuide": "Your personalized nutrition guide",
+  "failedToLoadDietPlan": "Failed to load diet plan",
+  "retry": "Retry",
+  "noDietPlanAvailable": "No diet plan available",
+  "personalizedNutritionPlan": "Personalized Nutrition Plan",
+  "defaultNutritionPlan": "Default Nutrition Plan",
+  "calories": "Calories",
+  "kcal": "kcal",
+  "protein": "Protein",
+  "carbs": "Carbs",
+  "fat": "Fat",
+  "additionalNotes": "Additional Notes",
+  "breakfast": "Breakfast",
+  "midMorningSnack": "Mid-Morning Snack",
+  "lunch": "Lunch",
+  "eveningSnack": "Evening Snack",
+  "dinner": "Dinner",
+  "nightSnack": "Night Snack",
+
+  "knowYourWorkoutPlans": "Know Your Workout Plans",
+  "medicalReferences": "Medical References",
+  "allWorkoutPlans": "All Workout Plans",
+  "currentActivePlan": "Current Active Plan",
+  "noWorkoutPlansFound": "No Workout Plans Found",
+  "refresh": "Refresh",
+  "active": "Active",
+  "completed": "Completed",
+  "paused": "Paused",
+  "cancelled": "Cancelled",
+  "unableToLoadWorkoutPlans": "Unable to Load Workout Plans",
+  "tryAgain": "Try Again",
+  "viewMedicalReferences": "View Medical References",
+  "weeks": "weeks",
+
+  "level": "Level",
+  "week": "Week",
+  "day": "Day",
+  "todaysWorkout": "Today's Workout",
+  "exercisePlanned": "{count} exercise planned",
+  "@exercisePlanned": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exercisesPlanned": "{count} exercises planned",
+  "@exercisesPlanned": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ready": "Ready",
+  "empty": "Empty",
+  "exercises": "Exercises",
+  "sets": "Sets",
+  "reps": "Reps",
+  "weight": "Weight",
+  "duration": "Duration",
+  "instructions": "Instructions",
+  "noExercisesAvailable": "No Exercises Available",
+  "noDataAvailable": "No Data Available",
+  "somethingWentWrong": "Something went wrong",
+  "easy": "Easy",
+  "medium": "Medium",
+  "hard": "Hard",
+
+  "cookTime": "Cook Time",
+  "difficulty": "Difficulty",
+  "overview": "Overview",
+  "ingredients": "Ingredients",
+  "startCooking": "Start Cooking",
+  "aboutThisRecipe": "About This Recipe",
+  "healthBenefits": "Health Benefits",
+  "heartHealthy": "Heart Healthy",
+  "heartHealthyDesc": "Low in saturated fats and rich in nutrients",
+  "highProtein": "High Protein",
+  "highProteinDesc": "Supports muscle growth and repair",
+  "naturalIngredients": "Natural Ingredients",
+  "naturalIngredientsDesc": "Made with wholesome, natural components",
+  "cookingSteps": "Cooking Steps",
+  "addedToFavorites": "Added to favorites!",
+  "removedFromFavorites": "Removed from favorites!",
+
+  "healthyRecipes": "Healthy Recipes",
+  "searchRecipesIngredients": "Search recipes, ingredients...",
+  "favoritesFeatureComingSoon": "Favorites feature coming soon!",
+  "all": "All",
+  "snacks": "Snacks",
+  "beverages": "Beverages",
+  "noRecipesFound": "No recipes found",
+  "tryAdjustingFilters": "Try adjusting your filters or search terms",
+  "servings": "servings",
+
+  "products": "Products",
+  "searchProductsBrands": "Search products, brands, and more...",
+  "clearSearch": "Clear search",
+  "noProductsFound": "No products found for \"{query}\"",
+  "@noProductsFound": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "noProductsAvailable": "No products available",
+  "oopsSomethingWentWrong": "Oops! Something went wrong",
+  "tryAgain": "Try Again",
+  "addToCart": "Add to Cart",
+  "buyNow": "Buy Now",
+  "addedToCart": "Added to cart",
+  "failedToAddToCart": "Failed to add to cart",
+  "sort": "Sort",
+  "sortBy": "Sort by",
+  "bestMatch": "Best Match",
+  "priceLowToHigh": "Price: Low to High",
+  "priceHighToLow": "Price: High to Low",
+  "highestRated": "Highest Rated",
+  "newestFirst": "Newest First",
+  "protein": "Protein",
+  "preWorkout": "Pre-Workout",
+  "postWorkout": "Post-Workout",
+  "vitamins": "Vitamins",
+  "weightLoss": "Weight Loss",
+  "muscleGain": "Muscle Gain",
+  "health": "Health",
+  "energy": "Energy",
+  
+  "productDetails": "Product Details",
+  "overview": "Overview",
+  "keyBenefits": "Key Benefits",
+  "fastFacts": "Fast Facts",
+  "usage": "Usage",
+  "storage": "Storage",
+  "disclaimer": "Disclaimer",
+  "sku": "SKU",
+  "shelfLife": "Shelf Life",
+  "manufacturedBy": "Manufactured By",
+  "marketedBy": "Marketed By",
+  "noInternetConnection": "No internet connection.",
+  "openingBrowser": "Opening browser...",
+  "unableToOpenBrowser": "Unable to open browser automatically",
+  "urlCopiedToClipboard": "URL copied to clipboard: {url}",
+  "@urlCopiedToClipboard": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "pleasePasteInBrowser": "Please paste in your browser or tap RETRY",
+  "retry": "RETRY",
+  "pleaseOpenUrlManually": "Please open the URL manually from clipboard",
+
+  "myOrders": "My Orders",
+  "refresh": "Refresh",
+  "all": "All",
+  "paid": "Paid",
+  "failed": "Failed",
+  "pending": "Pending",
+  "errorLoadingOrders": "Error loading orders",
+  "noOrdersFound": "No orders found",
+  "noOrdersYet": "You haven't made any orders yet",
+  "loadMore": "Load More",
+  "orderNumber": "Order #{orderId}",
+  "@orderNumber": {
+    "placeholders": {
+      "orderId": {
+        "type": "String"
+      }
+    }
+  },
+  "status": "Status",
+  "items": "Items",
+  "amount": "Amount",
+  "cartOrder": "🛒 Cart Order",
+  "orderDetails": "Order Details",
+  "orderId": "Order ID",
+  "gym": "Gym",
+  "date": "Date",
+  "products": "Products",
+  "close": "Close",
+  
+  "reels": "Reels",
+  "shuffleReels": "Shuffle Reels",
+  "loadingReels": "Loading reels...",
+  "failedToLoadReels": "Failed to load reels",
+  "noInternetConnectionCheckNetwork": "No internet connection. Please check your network and try again.",
+  "noReelsAvailable": "No reels available",
+  "checkBackLater": "Check back later for new content!",
+  "reportInappropriate": "Report Inappropriate",
+  "blockUser": "Block User",
+  "daysAgo": "{days}d ago",
+  "@daysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "{hours}h ago",
+  "@hoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "minutesAgo": "{minutes}m ago",
+  "@minutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "justNow": "Just now",
+  "reelBy": "Reel by {name}",
+  "@reelBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+
+  "phone": "Phone",
+  "address": "Address",
+  "dateOfBirth": "Date of Birth",
+  "editProfile": "Edit Profile",
+  "saveChanges": "Save Changes",
+  "cancel": "Cancel",
+
+  "notifications": "Notifications",
+  "noNotifications": "No notifications yet",
+  
+  "save": "Save",
+  "edit": "Edit",
+  "delete": "Delete",
+  "update": "Update",
+  "submit": "Submit",
+  "next": "Next",
+  "previous": "Previous",
+  "back": "Back",
+  "close": "Close",
+  "ok": "OK",
+  "yes": "Yes",
+  "no": "No",
+  "confirm": "Confirm",
+  "skip": "Skip",
+
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "thisWeek": "This Week",
+  "thisMonth": "This Month",
+  "weekly": "Weekly",
+  "monthly": "Monthly",
+
+  "monday": "Monday",
+  "tuesday": "Tuesday",
+  "wednesday": "Wednesday",
+  "thursday": "Thursday",
+  "friday": "Friday",
+  "saturday": "Saturday",
+  "sunday": "Sunday",
+
+  "mon": "Mon",
+  "tue": "Tue",
+  "wed": "Wed",
+  "thu": "Thu",
+  "fri": "Fri",
+  "sat": "Sat",
+  "sun": "Sun",
+
+  "error": "Error",
+  "success": "Success",
+  "warning": "Warning",
+  "info": "Info",
+  "loading": "Loading...",
+  "pleaseWait": "Please wait...",
+  "noData": "No data available",
+  "noResults": "No results found",
+  "tryAgain": "Try Again",
+  "refresh": "Refresh",
+
+  "videoContent": "Video Content",
+  "viewAll": "View All",
+  "search": "Search",
+  "filter": "Filter",
+  "sort": "Sort",
+
+  "accountability": "Accountability",
+  "results": "Results",
+  "progress": "Progress",
+  "statistics": "Statistics",
+  "goals": "Goals",
+  "achievements": "Achievements",
+  "trackProgressWithPhotos": "Track progress with photos",
+  "viewYourProgress": "View your progress",
+
+  "share": "Share",
+  "like": "Like",
+  "comment": "Comment",
+  "follow": "Follow",
+
+  "termsAndConditions": "Terms and Conditions",
+  "termsDialogTitle": "Terms and Conditions",
+  "close": "Close",
+  "scrollToReadTerms": "Please scroll down to read the complete terms",
+  "readCompleteTerms": "You have read the complete terms",
+  "accept": "Accept",
+  "termsServiceTitle": "TERMS OF SERVICE & COMMUNITY GUIDELINES",
+  "termsIntro": "By using Mr Muscle, you agree to the following terms:",
+  "zeroTolerancePolicy": "1. ZERO TOLERANCE POLICY",
+  "zeroToleranceDesc": "We have ZERO TOLERANCE for objectionable, harmful, or abusive content. Any content that violates our community guidelines will be immediately removed and users will be permanently banned.",
+  "prohibitedContent": "2. PROHIBITED CONTENT",
+  "prohibitedContentDesc": "You may NOT post content that includes:",
+  "prohibitedNudity": "• Nudity, sexual content, or explicit material",
+  "prohibitedViolence": "• Violence, threats, or harassment",
+  "prohibitedHateSpeech": "• Hate speech, discrimination, or bullying",
+  "prohibitedSpam": "• Spam, scams, or misleading information",
+  "prohibitedCopyright": "• Copyrighted material without permission",
+  "prohibitedPersonalInfo": "• Personal information of others",
+  "prohibitedIllegal": "• Content promoting illegal activities",
+  "prohibitedMinors": "• Any content that could harm minors",
+  "contentModeration": "3. CONTENT MODERATION",
+  "contentModerationDesc": "• All content is subject to review and filtering\n• We use automated systems and human moderators\n• Content may be removed without prior notice\n• We reserve the right to moderate all user-generated content\n• All content is filtered for inappropriate material before display\n• Users can report inappropriate content using the report button\n• All reports are reviewed and acted upon within 24 hours\n• Users can block other users who engage in inappropriate behavior\n• Repeated violations may result in account suspension",
+  "reportingSystem": "4. REPORTING SYSTEM",
+  "reportingSystemDesc": "• Users can report objectionable content using the report button\n• All reports are reviewed within 24 hours\n• We take immediate action on verified violations\n• Reporters' identities are kept confidential",
+  "userSafety": "5. USER SAFETY",
+  "userSafetyDesc": "• You can block users who engage in abusive behavior\n• Blocked users cannot interact with you\n• We provide tools to protect your safety and privacy",
+  "consequencesViolations": "6. CONSEQUENCES OF VIOLATIONS",
+  "consequencesViolationsDesc": "• First offense: Content removed + warning\n• Second offense: 7-day account suspension\n• Third offense: Permanent ban\n• Severe violations: Immediate permanent ban",
+  "yourResponsibilities": "7. YOUR RESPONSIBILITIES",
+  "yourResponsibilitiesDesc": "• You are responsible for all content you post\n• You must respect other users and community guidelines\n• You must report any violations you encounter\n• You must not attempt to circumvent our safety measures",
+  "ourCommitment": "8. OUR COMMITMENT",
+  "ourCommitmentDesc": "• We review all reports within 24 hours\n• We remove objectionable content immediately\n• We ban users who violate our policies\n• We continuously improve our safety systems",
+  "privacy": "9. PRIVACY",
+  "privacyDesc": "• We collect and use your data as described in our Privacy Policy\n• We may share data with law enforcement when required\n• We protect your personal information",
+  "termination": "10. TERMINATION",
+  "terminationDesc": "We may terminate your account at any time for violations of these terms.",
+  "termsAcknowledgment": "By continuing to use this app, you acknowledge that you have read, understood, and agree to these terms. Failure to comply will result in immediate account termination.",
+  "lastUpdated": "Last updated: [Current Date]",
+  "termsContact": "Contact: support@musclecrm.com for questions or concerns.",
+  "privacyPolicy": "Privacy Policy",
+  "aboutUs": "About Us",
+  "contactUs": "Contact Us",
+  "helpSupport": "Help & Support",
+  "version": "Version",
+
+  "scanQR": "Scan QR Code",
+  "gymAttendance": "Gym Attendance",
+  "checkIn": "Check In",
+  "checkOut": "Check Out",
+
+  "diet": "Diet",
+  "dietPlan": "Diet Plan",
+  "mealPlan": "Meal Plan",
+  "breakfast": "Breakfast",
+  "lunch": "Lunch",
+  "dinner": "Dinner",
+  "snacks": "Snacks",
+  "medicalReferences": "Medical References",
+  "quickActions": "Quick Actions",
+  "member": "Member",
+  "duration": "Duration",
+  "fees": "Fees",
+  "support": "Support",
+  "about": "About",
+  "deleteAccount": "Delete Account",
+  "user": "User",
+  "history": "History",
+  "description": "Description",
+  "keyIngredients": "Key Ingredients",
+  "save": "Save",
+  "details": "Details",
+  "cook": "Cook",
+  "somethingWentWrong": "Something went wrong",
+  "tryAgain": "Try Again",
+  "noProfileData": "No Profile Data",
+  "unableToLoadProfile": "Unable to load your profile information.",
+  "notSet": "Not set",
+  "signOut": "Sign Out",
+  "areYouSureSignOut": "Are you sure you want to sign out?",
+  "cancel": "Cancel",
+  "editProfile": "Edit Profile",
+  "deleteAccountConfirm": "Are you sure you want to delete your account?",
+  "delete": "Delete",
+  "contactSupport": "Contact Support",
+  "theme": "Theme",
+  "language": "Language",
+  "settings": "Settings",
+  "importantInformation": "Important Information:",
+  "deleteAccountInfo": "• You will be redirected to our external website\n• Account deletion can take up to 24 hours\n• This action cannot be undone\n• All your data will be permanently removed",
+  "continueToDelete": "Continue to Delete",
+  "profileEditingSoon": "Profile editing feature will be available soon.",
+  "ok": "OK",
+  "membershipDetails": "Membership Details",
+  "clubCode": "Club Code",
+  "joinDate": "Join Date",
+  "startDate": "Start Date",
+  "endDate": "End Date",
+  "darkMode": "Dark Mode",
+  "biometricLogin": "Biometric Login",
+  "rateApp": "Rate App",
+  "loggedOutSuccessfully": "Logged out successfully",
+  "signOutFailed": "Sign out failed",
+  "aboutFitTracker": "About FitTracker",
+  "fitnessCompanion": "Your personal fitness companion for a healthier lifestyle.",
+  "themeChangedTo": "Theme changed to",
+  "languageChangedTo": "Language changed to",
+  "height": "Height",
+  "bmiLabel": "BMI",
+  "english": "English",
+  "hindi": "हिंदी",
+  "systemDefault": "System Default",
+  "followSystemSettings": "Follow system settings",
+  "lightMode": "Light",
+  "lightModeDesc": "Light theme",
+  "darkModeLabel": "Dark",
+  "darkModeDesc": "Dark theme",
+
+  "healthAwareness": "Health Awareness",
+  "learnAboutBadHabits": "Learn about the hidden costs of bad habits",
+  "searchHealthTopics": "Search health topics...",
+  "allArticles": "All Articles",
+  "criticalAlerts": "Critical Alerts",
+  "costAnalysis": "Cost Analysis",
+  "noArticlesFound": "No articles found for your search.",
+  "noCriticalAlerts": "No critical health alerts at this time.",
+  "potentialLifetimeSavings": "Potential Lifetime Savings",
+  "byAvoidingBadHabits": "By avoiding all bad habits mentioned in our articles",
+  "costBreakdownByCategory": "Cost Breakdown by Category",
+  "costDataNotAvailable": "Cost data not available",
+  "errorLoadingContent": "Error loading content",
+  "readMore": "Read More",
+  "writtenBy": "Written by",
+  "keyTakeaways": "Key Takeaways",
+  "minRead": "{minutes} min read",
+  "@minRead": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "min": "{minutes} min",
+  "@min": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "allCategories": "All Categories",
+  "loadingArticles": "Loading articles...",
+  "tapToRetry": "Tap to retry",
+
+  "categoryAll": "All",
+  "categorySmoking": "Smoking",
+  "categoryAlcohol": "Alcohol",
+  "categoryPoorDiet": "Poor Diet",
+  "categorySedentaryLifestyle": "Sedentary Lifestyle",
+  "categorySleepDisorders": "Sleep Disorders",
+  "categoryStress": "Stress",
+  "categoryMentalHealth": "Mental Health",
+
+  "started": "Started",
+  "level": "Level",
+  "duration": "Duration",
+  "weeks": "Weeks",
+  "weeksCount": "{count} weeks",
+  "@weeksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notes": "Notes",
+  "selectWeek": "Select Week",
+  "week": "Week",
+  "weekNumber": "Week {number}",
+  "@weekNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "weekDays": "Week {week} - Days",
+  "@weekDays": {
+    "placeholders": {
+      "week": {
+        "type": "int"
+      }
+    }
+  },
+  "day": "Day",
+  "dayNumber": "Day {number}",
+  "@dayNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "exercise": "exercise",
+  "exercises": "exercises",
+  "exerciseCount": "{count} exercise",
+  "@exerciseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exercisesCount": "{count} exercises",
+  "@exercisesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noWeeksAvailable": "No Weeks Available",
+  "noWeeksConfigured": "This workout plan doesn't have any weeks configured yet.",
+  "noWorkoutDays": "No workout days available for this week.",
+
+  "myCart": "My Cart",
+  "buy": "Buy",
+  "removedFromCart": "Removed {itemName} from cart",
+  "@removedFromCart": {
+    "placeholders": {
+      "itemName": {
+        "type": "String"
+      }
+    }
+  },
+  "yourCartIsEmpty": "Your cart is empty",
+  "addProductsToGetStarted": "Add products to get started",
+  "startShopping": "Start Shopping",
+  "total": "Total",
+  "proceedToCheckout": "Proceed to Checkout",
+  "errorLoadingCart": "Error loading cart",
+  "redirectedToWallet": "Redirected to {walletName} wallet",
+  "@redirectedToWallet": {
+    "placeholders": {
+      "walletName": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentFailed": "Payment failed. Please try again.",
+  "failedToInitiateCheckout": "Failed to initiate cart checkout. Please try again.",
+  "cartCheckoutError": "Cart checkout error: {error}",
+  "@cartCheckoutError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "scanQr": "Scan QR",
+  "attendanceAlreadyMarked": "Attendance already marked for today",
+  "attendanceMarkedSuccessfully": "Attendance marked successfully",
+  "failedToMarkAttendance": "Failed to mark attendance",
+  "pointCameraAtQr": "Point your camera at the QR code to mark attendance",
+
+  "nutrition": "Nutrition",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "foodAddedSuccessfully": "Food added successfully!",
+  "failedToAddFood": "Failed to add food: {error}",
+  "@failedToAddFood": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mealDeletedSuccessfully": "Meal deleted successfully!",
+  "failedToDeleteMeal": "Failed to delete meal: {error}",
+  "@failedToDeleteMeal": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noMealsAddedYet": "No meals added yet",
+  "tapToAddFirstMeal": "Tap the + button to add your first meal!",
+  "todaysMeals": "Today's Meals",
+  "mealUpdatedSuccessfully": "Meal updated successfully!",
+  "failedToUpdateMeal": "Failed to update meal: {error}",
+  "@failedToUpdateMeal": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "goalsUpdatedSuccessfully": "Goals updated successfully!",
+
+  "jan": "Jan",
+  "feb": "Feb",
+  "mar": "Mar",
+  "apr": "Apr",
+  "may": "May",
+  "jun": "Jun",
+  "jul": "Jul",
+  "aug": "Aug",
+  "sep": "Sep",
+  "oct": "Oct",
+  "nov": "Nov",
+  "dec": "Dec",
+
+  "calorieGoal": "Calorie Goal",
+  "kcal": "kcal",
+  "remainingOnly": "Remaining only",
+  "goalExceededBy": "Goal exceeded by",
+  "cal": "Cal",
+  "consumed": "Consumed",
+  "fat": "Fat",
+  "protein": "Protein",
+  "carbs": "Carbs",
+  "grams": "g",
+  "sevenDayHistory": "7-Day History",
+  "sun": "Sun",
+  "mon": "Mon",
+  "tue": "Tue",
+  "wed": "Wed",
+  "thu": "Thu",
+  "fri": "Fri",
+  "sat": "Sat"
+}
