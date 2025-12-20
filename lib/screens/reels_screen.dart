@@ -28,6 +28,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   bool _isInitialized = false;
   int _initialPage = 0;
   bool _isScreenActive = true; // Track if screen is active
+  final Map<String, bool> _expandedCaptions = {}; // Track expanded state per reel
 
   @override
   void initState() {
@@ -133,6 +134,9 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final titleFontSize = screenWidth * 0.08;
+
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
@@ -141,10 +145,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         foregroundColor: Colors.white,
         title: Text(
           AppLocalizations.of(context)!.reels,
-          style: const TextStyle(
-            fontSize: 20,
+          style: TextStyle(
+            fontSize: titleFontSize,
             fontWeight: FontWeight.bold,
-            shadows: [
+            shadows: const [
               Shadow(
                 offset: Offset(0, 1),
                 blurRadius: 3.0,
@@ -227,6 +231,11 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildLoadingState() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final fontSize = screenWidth * 0.04;
+    final spacing = screenHeight * 0.025;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -234,12 +243,12 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
           const CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: spacing),
           Text(
             AppLocalizations.of(context)!.loadingReels,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white70,
-              fontSize: 16,
+              fontSize: fontSize,
             ),
           ),
         ],
@@ -250,38 +259,47 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   Widget _buildErrorState(String errorMessage) {
     final isOnline = ConnectivityService().isConnected;
     final localizations = AppLocalizations.of(context)!;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final padding = screenWidth * 0.06;
+    final iconSize = screenWidth * 0.16;
+    final titleFontSize = screenWidth * 0.05;
+    final bodyFontSize = screenWidth * 0.035;
+    final spacing = screenHeight * 0.03;
+    final buttonPadding = screenWidth * 0.06;
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: EdgeInsets.all(padding),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.error_outline,
-              size: 64,
+              size: iconSize,
               color: Colors.white54,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: spacing),
             Text(
               localizations.failedToLoadReels,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: titleFontSize,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: spacing * 0.4),
             Text(
               isOnline
                   ? errorMessage
                   : localizations.noInternetConnectionCheckNetwork,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white70,
-                fontSize: 14,
+                fontSize: bodyFontSize,
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: spacing),
             if (isOnline)
               ElevatedButton(
                 onPressed: () {
@@ -290,10 +308,12 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: buttonPadding,
+                    vertical: screenHeight * 0.015,
+                  ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(screenWidth * 0.06),
                   ),
                 ),
                 child: Text(localizations.tryAgain),
@@ -306,30 +326,37 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
 
   Widget _buildEmptyState() {
     final localizations = AppLocalizations.of(context)!;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final iconSize = screenWidth * 0.16;
+    final titleFontSize = screenWidth * 0.05;
+    final bodyFontSize = screenWidth * 0.035;
+    final spacing = screenHeight * 0.03;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.video_library_outlined,
-            size: 64,
+            size: iconSize,
             color: Colors.white54,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: spacing),
           Text(
             localizations.noReelsAvailable,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: titleFontSize,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: spacing * 0.4),
           Text(
             localizations.checkBackLater,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white70,
-              fontSize: 14,
+              fontSize: bodyFontSize,
             ),
           ),
         ],
@@ -338,6 +365,9 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildReelItem(ReelModel reel, bool isVisible) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
     debugPrint(
         'ReelsScreen: Building reel item with videoUrl: ${reel.videoUrl}');
     debugPrint('ReelsScreen: Reel s3Key: ${reel.s3Key}');
@@ -400,8 +430,8 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
 
         // Three-dot menu positioned on the right side
         Positioned(
-          right: 16,
-          top: MediaQuery.of(context).padding.top + 100,
+          right: screenWidth * 0.04,
+          top: MediaQuery.of(context).padding.top + screenHeight * 0.12,
           child: _buildThreeDotMenu(reel),
         ),
 
@@ -420,10 +450,20 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildOverlay(ReelModel reel) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final horizontalPadding = screenWidth * 0.04;
+    final verticalPadding = screenHeight * 0.02;
+    final nameFontSize = screenWidth * 0.04;
+    final captionFontSize = screenWidth * 0.035;
+    final timeFontSize = screenWidth * 0.03;
+
+    final isExpanded = _expandedCaptions[reel.id] ?? false;
+    final needsExpansion = reel.caption.length > 100; // Approximate threshold for 3 lines
+
     return IgnorePointer(
       ignoring: false,
       child: Container(
-        height: 200, // Fixed height instead of full screen
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -438,10 +478,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         ),
         child: Padding(
           padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(context).padding.bottom + 20,
+            left: horizontalPadding,
+            right: horizontalPadding,
+            top: verticalPadding,
+            bottom: MediaQuery.of(context).padding.bottom + verticalPadding,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,17 +492,17 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
                 children: [
                   // Gym logo/profile picture
                   _buildProfileAvatar(reel),
-                  const SizedBox(width: 12),
+                  SizedBox(width: screenWidth * 0.03),
 
                   // Gym name
                   Expanded(
                     child: Text(
-                      reel.customerName, // This now shows gym name via backward compatibility
-                      style: const TextStyle(
+                      reel.customerName,
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: nameFontSize,
                         fontWeight: FontWeight.w600,
-                        shadows: [
+                        shadows: const [
                           Shadow(
                             offset: Offset(0, 1),
                             blurRadius: 3.0,
@@ -475,35 +515,88 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
                 ],
               ),
 
-              const SizedBox(height: 12),
+              SizedBox(height: screenHeight * 0.015),
 
-              // Caption
+              // Caption with expand/collapse functionality
               if (reel.caption.isNotEmpty)
-                Text(
-                  reel.caption,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    shadows: [
-                      Shadow(
-                        offset: Offset(0, 1),
-                        blurRadius: 3.0,
-                        color: Colors.black54,
+                GestureDetector(
+                  onTap: needsExpansion
+                      ? () {
+                          setState(() {
+                            _expandedCaptions[reel.id] = !isExpanded;
+                          });
+                        }
+                      : null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        reel.caption,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: captionFontSize,
+                          height: 1.4,
+                          shadows: const [
+                            Shadow(
+                              offset: Offset(0, 1),
+                              blurRadius: 3.0,
+                              color: Colors.black54,
+                            ),
+                          ],
+                        ),
+                        maxLines: isExpanded ? null : 3,
+                        overflow: isExpanded ? null : TextOverflow.ellipsis,
                       ),
+                      if (needsExpansion && !isExpanded)
+                        Padding(
+                          padding: EdgeInsets.only(top: screenHeight * 0.005),
+                          child: Text(
+                            'more',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: captionFontSize,
+                              fontWeight: FontWeight.w600,
+                              shadows: const [
+                                Shadow(
+                                  offset: Offset(0, 1),
+                                  blurRadius: 3.0,
+                                  color: Colors.black54,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (needsExpansion && isExpanded)
+                        Padding(
+                          padding: EdgeInsets.only(top: screenHeight * 0.005),
+                          child: Text(
+                            'less',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: captionFontSize,
+                              fontWeight: FontWeight.w600,
+                              shadows: const [
+                                Shadow(
+                                  offset: Offset(0, 1),
+                                  blurRadius: 3.0,
+                                  color: Colors.black54,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
                 ),
 
-              const SizedBox(height: 8),
+              SizedBox(height: screenHeight * 0.01),
 
               // Time ago
               Text(
                 _formatTimeAgo(reel.createdAt),
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.7),
-                  fontSize: 12,
+                  fontSize: timeFontSize,
                   shadows: const [
                     Shadow(
                       offset: Offset(0, 1),
@@ -521,6 +614,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildThreeDotMenu(ReelModel reel) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final iconSize = screenWidth * 0.06;
+    final menuItemFontSize = screenWidth * 0.035;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.6),
@@ -528,20 +625,20 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.3),
-            blurRadius: 8,
+            blurRadius: 10,
             spreadRadius: 1,
           ),
         ],
       ),
       child: PopupMenuButton<String>(
-        icon: const Icon(
+        icon: Icon(
           Icons.more_vert,
           color: Colors.white,
-          size: 24,
+          size: iconSize,
         ),
         color: Colors.grey[900],
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(screenWidth * 0.03),
         ),
         elevation: 8,
         onSelected: (value) {
@@ -552,17 +649,17 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
             value: 'report',
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.flag_outlined,
                   color: Colors.white,
-                  size: 20,
+                  size: iconSize * 0.7,
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: screenWidth * 0.03),
                 Text(
                   AppLocalizations.of(context)!.reportInappropriate,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: menuItemFontSize,
                   ),
                 ),
               ],
@@ -572,17 +669,17 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
             value: 'block',
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.block,
                   color: Colors.red,
-                  size: 20,
+                  size: iconSize * 0.7,
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: screenWidth * 0.03),
                 Text(
                   AppLocalizations.of(context)!.blockUser,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.red,
-                    fontSize: 14,
+                    fontSize: menuItemFontSize,
                   ),
                 ),
               ],

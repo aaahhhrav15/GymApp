@@ -44,12 +44,15 @@ class _ResultScreenState extends State<ResultScreen>
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final titleFontSize = screenWidth * 0.08;
+    final tabFontSize = screenWidth * 0.04;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
+        shadowColor: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios,
@@ -62,7 +65,7 @@ class _ResultScreenState extends State<ResultScreen>
           AppLocalizations.of(context)!.results,
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,
-            fontSize: screenWidth * 0.05,
+            fontSize: titleFontSize,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -73,13 +76,14 @@ class _ResultScreenState extends State<ResultScreen>
           labelColor: Theme.of(context).colorScheme.primary,
           unselectedLabelColor:
               Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          indicatorWeight: 3,
           labelStyle: TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: screenWidth * 0.04,
+            fontSize: tabFontSize,
           ),
           unselectedLabelStyle: TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: screenWidth * 0.04,
+            fontWeight: FontWeight.w400,
+            fontSize: tabFontSize,
           ),
           tabs: [
             Tab(
@@ -106,6 +110,12 @@ class _ResultScreenState extends State<ResultScreen>
   // Build Results Tab (My Results)
   Widget _buildResultsTab() {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final horizontalPadding = screenWidth * 0.06;
+    final iconSize = screenWidth * 0.16;
+    final titleFontSize = screenWidth * 0.05;
+    final bodyFontSize = screenWidth * 0.035;
+    final spacing = screenHeight * 0.03;
 
     return Consumer<ResultProvider>(
       builder: (context, resultProvider, child) {
@@ -119,51 +129,59 @@ class _ResultScreenState extends State<ResultScreen>
 
         if (resultProvider.results.isEmpty) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.analytics,
-                  size: screenWidth * 0.2,
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
-                ),
-                SizedBox(height: screenWidth * 0.04),
-                Text(
-                  AppLocalizations.of(context)!.noResultsYet,
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.045,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.6),
+            child: Padding(
+              padding: EdgeInsets.all(horizontalPadding),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.analytics,
+                    size: iconSize,
+                    color:
+                        Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
                   ),
-                ),
-                SizedBox(height: screenWidth * 0.02),
-                Text(
-                  AppLocalizations.of(context)!.uploadFirstProgressPhoto,
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.035,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.5),
+                  SizedBox(height: spacing),
+                  Text(
+                    AppLocalizations.of(context)!.noResultsYet,
+                    style: TextStyle(
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.6),
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                  SizedBox(height: spacing * 0.4),
+                  Text(
+                    AppLocalizations.of(context)!.uploadFirstProgressPhoto,
+                    style: TextStyle(
+                      fontSize: bodyFontSize,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.5),
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           );
         }
 
-        return ListView.builder(
-          padding: EdgeInsets.all(screenWidth * 0.04),
-          itemCount: resultProvider.results.length,
-          itemBuilder: (context, index) {
-            final result = resultProvider.results[index];
-            return _buildResultCard(result);
-          },
+        return RefreshIndicator(
+          color: Theme.of(context).colorScheme.primary,
+          onRefresh: () => resultProvider.fetchResults(),
+          child: ListView.builder(
+            padding: EdgeInsets.all(horizontalPadding),
+            itemCount: resultProvider.results.length,
+            itemBuilder: (context, index) {
+              final result = resultProvider.results[index];
+              return _buildResultCard(result);
+            },
+          ),
         );
       },
     );
@@ -171,10 +189,17 @@ class _ResultScreenState extends State<ResultScreen>
 
   // Build Upload Tab
   Widget _buildUploadTab() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final horizontalPadding = screenWidth * 0.06;
+    final borderRadius = screenWidth * 0.04;
+    final sectionTitleFontSize = screenWidth * 0.05;
+    final spacing = screenHeight * 0.03;
+
     return Consumer<ResultProvider>(
       builder: (context, resultProvider, child) {
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(horizontalPadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -183,35 +208,46 @@ class _ResultScreenState extends State<ResultScreen>
                 Text(
                   'Selected Images',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: sectionTitleFontSize,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: spacing * 0.4),
                 SizedBox(
-                  height: 120,
+                  height: screenWidth * 0.3,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: resultProvider.selectedImages.length,
                     itemBuilder: (context, index) {
                       final image = resultProvider.selectedImages[index];
                       return Container(
-                        width: 120,
-                        height: 120,
-                        margin: const EdgeInsets.only(right: 12),
+                        width: screenWidth * 0.3,
+                        height: screenWidth * 0.3,
+                        margin: EdgeInsets.only(right: screenWidth * 0.03),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(borderRadius),
                           border: Border.all(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outline
+                                .withOpacity(0.3),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
                               color: Theme.of(context)
                                   .colorScheme
-                                  .outline
-                                  .withOpacity(0.3)),
+                                  .shadow
+                                  .withOpacity(0.05),
+                              blurRadius: 6,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
                         child: Stack(
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(11),
+                              borderRadius: BorderRadius.circular(borderRadius * 0.9),
                               child: Image.file(
                                 File(image.path),
                                 fit: BoxFit.cover,
@@ -220,21 +256,31 @@ class _ResultScreenState extends State<ResultScreen>
                               ),
                             ),
                             Positioned(
-                              top: 4,
-                              right: 4,
+                              top: screenWidth * 0.01,
+                              right: screenWidth * 0.01,
                               child: GestureDetector(
                                 onTap: () => resultProvider.removeImage(index),
                                 child: Container(
-                                  padding: const EdgeInsets.all(4),
+                                  padding: EdgeInsets.all(screenWidth * 0.01),
                                   decoration: BoxDecoration(
                                     color: Theme.of(context).colorScheme.error,
                                     shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .shadow
+                                            .withOpacity(0.2),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
                                   ),
                                   child: Icon(
                                     Icons.close,
                                     color:
                                         Theme.of(context).colorScheme.onError,
-                                    size: 16,
+                                    size: screenWidth * 0.04,
                                   ),
                                 ),
                               ),
@@ -245,19 +291,19 @@ class _ResultScreenState extends State<ResultScreen>
                     },
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: spacing),
               ],
 
               // Image Selection Buttons
               Text(
                 AppLocalizations.of(context)!.addImages,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: sectionTitleFontSize,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: spacing * 0.4),
               Row(
                 children: [
                   Expanded(
@@ -267,7 +313,7 @@ class _ResultScreenState extends State<ResultScreen>
                       onTap: () => resultProvider.pickImageFromCamera(),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: screenWidth * 0.03),
                   Expanded(
                     child: _buildImageSourceButton(
                       icon: Icons.photo_library,
@@ -278,18 +324,18 @@ class _ResultScreenState extends State<ResultScreen>
                 ],
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: spacing),
 
               // Description Field
               Text(
                 AppLocalizations.of(context)!.description,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: sectionTitleFontSize,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: spacing * 0.4),
               TextField(
                 controller: _descriptionController,
                 focusNode: _descriptionFocus,
@@ -299,67 +345,88 @@ class _ResultScreenState extends State<ResultScreen>
                 decoration: InputDecoration(
                   hintText: AppLocalizations.of(context)!.describeYourProgress,
                   hintStyle: TextStyle(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.4)),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.4),
+                    fontSize: screenWidth * 0.035,
+                  ),
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surfaceContainer,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(borderRadius),
                     borderSide: BorderSide(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outline
-                            .withOpacity(0.3)),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outline
+                          .withOpacity(0.3),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(borderRadius),
                     borderSide: BorderSide(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outline
-                            .withOpacity(0.3)),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outline
+                          .withOpacity(0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(borderRadius),
                     borderSide: BorderSide(
-                        color: Theme.of(context).colorScheme.primary),
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
+                  contentPadding: EdgeInsets.all(horizontalPadding),
                 ),
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: spacing),
 
               // Weight Field
               Text(
                 AppLocalizations.of(context)!.currentWeight,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: sectionTitleFontSize,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: spacing * 0.4),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(horizontalPadding),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(borderRadius),
                   border: Border.all(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outline
+                        .withOpacity(0.3),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
                       color: Theme.of(context)
                           .colorScheme
-                          .outline
-                          .withOpacity(0.3)),
+                          .shadow
+                          .withOpacity(0.05),
+                      blurRadius: 6,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.monitor_weight,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.6)),
-                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.monitor_weight,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.6),
+                      size: screenWidth * 0.05,
+                    ),
+                    SizedBox(width: screenWidth * 0.03),
                     Expanded(
                       child: Slider(
                         value: resultProvider.weight,
@@ -375,23 +442,25 @@ class _ResultScreenState extends State<ResultScreen>
                         onChanged: resultProvider.updateWeight,
                       ),
                     ),
+                    SizedBox(width: screenWidth * 0.02),
                     Text(
                       '${resultProvider.weight.toStringAsFixed(1)} kg',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: screenWidth * 0.04,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 32),
+              SizedBox(height: spacing),
 
               // Upload Button
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: screenHeight * 0.07,
                 child: ElevatedButton(
                   onPressed:
                       resultProvider.canUpload && !resultProvider.isUploading
@@ -400,8 +469,9 @@ class _ResultScreenState extends State<ResultScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(borderRadius),
                     ),
                   ),
                   child: resultProvider.isUploading
@@ -409,19 +479,21 @@ class _ResultScreenState extends State<ResultScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             SizedBox(
-                              width: 20,
-                              height: 20,
+                              width: screenWidth * 0.05,
+                              height: screenWidth * 0.05,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                     Theme.of(context).colorScheme.onPrimary),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: screenWidth * 0.02),
                             Text(
                               AppLocalizations.of(context)!.uploading,
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.onPrimary,
+                                fontSize: screenWidth * 0.04,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
@@ -429,7 +501,7 @@ class _ResultScreenState extends State<ResultScreen>
                       : Text(
                           AppLocalizations.of(context)!.uploadResult,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: screenWidth * 0.04,
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.onPrimary,
                           ),
@@ -449,24 +521,43 @@ class _ResultScreenState extends State<ResultScreen>
     required String label,
     required VoidCallback onTap,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final borderRadius = screenWidth * 0.04;
+    final iconSize = screenWidth * 0.12;
+    final labelFontSize = screenWidth * 0.035;
+    final padding = screenWidth * 0.04;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: EdgeInsets.symmetric(vertical: padding),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(borderRadius),
           border: Border.all(
-              color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Column(
           children: [
-            Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 8),
+            Icon(
+              icon,
+              size: iconSize,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            SizedBox(height: screenWidth * 0.02),
             Text(
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
+                fontSize: labelFontSize,
                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),
             ),
@@ -478,14 +569,21 @@ class _ResultScreenState extends State<ResultScreen>
 
   // Build Result Card
   Widget _buildResultCard(ResultModel result) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final borderRadius = screenWidth * 0.04;
+    final cardPadding = screenWidth * 0.04;
+    final descriptionFontSize = screenWidth * 0.04;
+    final infoFontSize = screenWidth * 0.035;
+    final dateFontSize = screenWidth * 0.03;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: screenWidth * 0.04),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -496,9 +594,9 @@ class _ResultScreenState extends State<ResultScreen>
         children: [
           // Image
           ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(borderRadius),
+              topRight: Radius.circular(borderRadius),
             ),
             child: Stack(
               children: [
@@ -513,18 +611,28 @@ class _ResultScreenState extends State<ResultScreen>
                   right: 8,
                   child: PopupMenuButton<String>(
                     icon: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(screenWidth * 0.02),
                       decoration: BoxDecoration(
                         color: Theme.of(context)
                             .colorScheme
                             .surface
                             .withOpacity(0.8),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .shadow
+                                .withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
                       ),
                       child: Icon(
                         Icons.more_vert,
                         color: Theme.of(context).colorScheme.onSurface,
-                        size: 20,
+                        size: screenWidth * 0.05,
                       ),
                     ),
                     onSelected: (value) {
@@ -552,28 +660,31 @@ class _ResultScreenState extends State<ResultScreen>
           ),
           // Content
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(cardPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   result.description,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: descriptionFontSize,
                     fontWeight: FontWeight.w500,
                     color: Theme.of(context).colorScheme.onSurface,
+                    height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: screenWidth * 0.03),
                 Row(
                   children: [
-                    Icon(Icons.monitor_weight,
-                        size: 16,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.6)),
-                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.monitor_weight,
+                      size: screenWidth * 0.04,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.6),
+                    ),
+                    SizedBox(width: screenWidth * 0.01),
                     Text(
                       '${result.weight.toStringAsFixed(1)} kg',
                       style: TextStyle(
@@ -582,16 +693,19 @@ class _ResultScreenState extends State<ResultScreen>
                             .onSurface
                             .withOpacity(0.6),
                         fontWeight: FontWeight.w500,
+                        fontSize: infoFontSize,
                       ),
                     ),
                     const Spacer(),
-                    Icon(Icons.access_time,
-                        size: 16,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.6)),
-                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.access_time,
+                      size: screenWidth * 0.04,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.6),
+                    ),
+                    SizedBox(width: screenWidth * 0.01),
                     Text(
                       _formatDate(result.uploadDate),
                       style: TextStyle(
@@ -599,7 +713,7 @@ class _ResultScreenState extends State<ResultScreen>
                             .colorScheme
                             .onSurface
                             .withOpacity(0.6),
-                        fontSize: 12,
+                        fontSize: dateFontSize,
                       ),
                     ),
                   ],
@@ -768,15 +882,43 @@ class _ResultScreenState extends State<ResultScreen>
 
   // Show Delete Dialog
   void _showDeleteDialog(String resultId) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final borderRadius = screenWidth * 0.04;
+    final titleFontSize = screenWidth * 0.05;
+    final bodyFontSize = screenWidth * 0.04;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Result'),
-        content: const Text('Are you sure you want to delete this result?'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
+        title: Text(
+          'Delete Result',
+          style: TextStyle(
+            fontSize: titleFontSize,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete this result?',
+          style: TextStyle(
+            fontSize: bodyFontSize,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                fontSize: bodyFontSize,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -801,8 +943,14 @@ class _ResultScreenState extends State<ResultScreen>
                 // );
               }
             },
-            child: Text(AppLocalizations.of(context)!.delete,
-                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(
+              AppLocalizations.of(context)!.delete,
+              style: TextStyle(
+                fontSize: bodyFontSize,
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

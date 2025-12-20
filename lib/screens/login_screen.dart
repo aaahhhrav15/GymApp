@@ -535,8 +535,17 @@ class _LoginScreenState extends State<LoginScreen> {
           ? () async {
               final success = await loginProvider.verifyOtp();
               if (success && mounted) {
-                // Navigate to home screen
-                Navigator.pushReplacementNamed(context, '/home');
+                // Check if user needs onboarding
+                final userData = loginProvider.user;
+                final hasRegistered = userData['hasRegistered'];
+                
+                // Navigate to onboarding if hasRegistered is false or doesn't exist
+                if (hasRegistered == false || hasRegistered == null) {
+                  Navigator.pushReplacementNamed(context, '/onboarding-flow');
+                } else {
+                  // Navigate to home screen
+                  Navigator.pushReplacementNamed(context, '/home');
+                }
               }
             }
           : null;

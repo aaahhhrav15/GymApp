@@ -133,6 +133,12 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
   }
 
   void _showImageSourceDialog(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth * 0.06;
+    final borderRadius = screenWidth * 0.04;
+    final titleFontSize = screenWidth * 0.05;
+    final spacing = screenWidth * 0.05;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -140,9 +146,9 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
         return Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(borderRadius * 1.25),
+              topRight: Radius.circular(borderRadius * 1.25),
             ),
           ),
           child: SafeArea(
@@ -150,11 +156,11 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
               children: [
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(horizontalPadding),
                   child: Column(
                     children: [
                       Container(
-                        width: 40,
+                        width: screenWidth * 0.1,
                         height: 4,
                         decoration: BoxDecoration(
                           color: Theme.of(context)
@@ -164,16 +170,16 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: spacing),
                       Text(
                         AppLocalizations.of(context)!.selectImageSource,
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: titleFontSize,
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: spacing),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
@@ -199,7 +205,7 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: spacing),
                     ],
                   ),
                 ),
@@ -216,28 +222,42 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
     required String label,
     required VoidCallback onTap,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final iconSize = screenWidth * 0.12;
+    final labelFontSize = screenWidth * 0.04;
+    final borderRadius = screenWidth * 0.04;
+    final padding = screenWidth * 0.05;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(padding),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(borderRadius),
           border: Border.all(
-              color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Column(
           children: [
             Icon(
               icon,
-              size: 40,
+              size: iconSize,
               color: Theme.of(context).colorScheme.primary,
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: screenWidth * 0.025),
             Text(
               label,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: labelFontSize,
                 fontWeight: FontWeight.w500,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
@@ -252,12 +272,16 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final horizontalPadding = screenWidth * 0.06;
+    final titleFontSize = screenWidth * 0.08;
+    final tabFontSize = screenWidth * 0.04;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
+        shadowColor: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios,
@@ -270,7 +294,7 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
           AppLocalizations.of(context)!.accountability,
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,
-            fontSize: screenWidth * 0.05,
+            fontSize: titleFontSize,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -281,8 +305,14 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
               Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
           indicatorColor: Theme.of(context).colorScheme.primary,
           indicatorWeight: 3,
-          labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-          unselectedLabelStyle: TextStyle(fontSize: screenWidth * 0.035),
+          labelStyle: TextStyle(
+            fontSize: tabFontSize,
+            fontWeight: FontWeight.w600,
+          ),
+          unselectedLabelStyle: TextStyle(
+            fontSize: tabFontSize,
+            fontWeight: FontWeight.w400,
+          ),
           tabs: [
             Tab(
               text: AppLocalizations.of(context)!.myProgress,
@@ -318,15 +348,17 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
                             Theme.of(context).colorScheme.onPrimary,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.06),
                         ),
                         padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.04),
+                          horizontal: horizontalPadding,
+                          vertical: screenHeight * 0.015,
+                        ),
                       ),
                       child: Text(
                         AppLocalizations.of(context)!.upload,
                         style: TextStyle(
-                          fontSize: screenWidth * 0.035,
+                          fontSize: tabFontSize,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -369,6 +401,7 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
   // Tab 1: Uploaded Images (My Progress)
   Widget _buildUploadedImagesTab() {
     final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth * 0.06;
 
     return Consumer<AccountabilityProvider>(
       builder: (context, provider, child) {
@@ -388,7 +421,7 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
           color: Theme.of(context).colorScheme.primary,
           onRefresh: () => provider.fetchUploadedImages(),
           child: ListView.builder(
-            padding: EdgeInsets.all(screenWidth * 0.04),
+            padding: EdgeInsets.all(horizontalPadding),
             itemCount: provider.uploadedImagesSafe.length,
             itemBuilder: (context, index) {
               final image = provider.uploadedImagesSafe[index];
@@ -422,63 +455,85 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
   }
 
   Widget _buildEmptyUploadedState() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final iconSize = screenWidth * 0.16;
+    final titleFontSize = screenWidth * 0.05;
+    final bodyFontSize = screenWidth * 0.035;
+    final spacing = screenHeight * 0.03;
+    final horizontalPadding = screenWidth * 0.06;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainer,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.photo_library_outlined,
-              size: 60,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'No progress photos yet',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Upload your first progress photo\nto start tracking your journey',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () => _tabController.animateTo(1),
-            icon: const Icon(Icons.add_photo_alternate),
-            label: const Text('Upload Photos'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(25),
+      child: Padding(
+        padding: EdgeInsets.all(horizontalPadding),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: iconSize,
+              height: iconSize,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.photo_library_outlined,
+                size: iconSize * 0.5,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
               ),
             ),
-          ),
-        ],
+            SizedBox(height: spacing),
+            Text(
+              'No progress photos yet',
+              style: TextStyle(
+                fontSize: titleFontSize,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
+            SizedBox(height: spacing * 0.4),
+            Text(
+              'Upload your first progress photo\nto start tracking your journey',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: bodyFontSize,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: spacing),
+            ElevatedButton.icon(
+              onPressed: () => _tabController.animateTo(1),
+              icon: const Icon(Icons.add_photo_alternate),
+              label: const Text('Upload Photos'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: screenHeight * 0.015,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(screenWidth * 0.06),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildUploadedImageCard(
       Map<String, dynamic> image, AccountabilityProvider provider) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth * 0.06;
+    final cardPadding = screenWidth * 0.04;
+    final borderRadius = screenWidth * 0.04;
+    final descriptionFontSize = screenWidth * 0.04;
+    final dateFontSize = screenWidth * 0.035;
+    final tagFontSize = screenWidth * 0.03;
+
     // Safely extract values with null checks
     final String imageUrl = image['imageUrl']?.toString() ?? '';
     final String id = image['id']?.toString() ?? '';
@@ -492,10 +547,10 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: screenWidth * 0.04),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
             color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
@@ -509,9 +564,9 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
         children: [
           // Image
           ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(borderRadius),
+              topRight: Radius.circular(borderRadius),
             ),
             child: Stack(
               children: [
@@ -601,25 +656,26 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
           ),
           // Content
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(cardPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   description,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: descriptionFontSize,
                     fontWeight: FontWeight.w500,
                     color: Theme.of(context).colorScheme.onSurface,
+                    height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: screenWidth * 0.03),
                 Row(
                   children: [
                     Text(
                       _formatDate(uploadDate),
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: dateFontSize,
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
@@ -629,27 +685,29 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.03,
+                        vertical: screenWidth * 0.015,
+                      ),
                       decoration: BoxDecoration(
                         color: Theme.of(context)
                             .colorScheme
                             .primaryContainer
                             .withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.lock_outline,
-                            size: 16,
+                            size: screenWidth * 0.04,
                             color: Theme.of(context).colorScheme.primary,
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: screenWidth * 0.01),
                           Text(
                             'Private',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: tagFontSize,
                               color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.w600,
                             ),
@@ -818,16 +876,21 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
   }
 
   Widget _buildImagesList(AccountabilityProvider provider, double screenWidth) {
+    final horizontalPadding = screenWidth * 0.06;
+    final borderRadius = screenWidth * 0.04;
+    final cardPadding = screenWidth * 0.04;
+    final labelFontSize = screenWidth * 0.035;
+
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(horizontalPadding),
       itemCount: provider.selectedImages.length,
       itemBuilder: (context, index) {
         final image = provider.selectedImages[index];
         return Container(
-          margin: const EdgeInsets.only(bottom: 16),
+          margin: EdgeInsets.only(bottom: screenWidth * 0.04),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(borderRadius),
             boxShadow: [
               BoxShadow(
                 color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
@@ -840,9 +903,9 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(borderRadius),
+                  topRight: Radius.circular(borderRadius),
                 ),
                 child: Stack(
                   children: [
@@ -878,11 +941,11 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(cardPadding * 0.75),
                 child: Text(
                   'Image ${index + 1}',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: labelFontSize,
                     fontWeight: FontWeight.w500,
                     color: Theme.of(context)
                         .colorScheme
@@ -899,14 +962,27 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
   }
 
   Widget _buildDescriptionInput() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth * 0.06;
+    final borderRadius = screenWidth * 0.04;
+    final labelFontSize = screenWidth * 0.04;
+    final hintFontSize = screenWidth * 0.035;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(horizontalPadding),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(borderRadius * 1.25),
+          topRight: Radius.circular(borderRadius * 1.25),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
       child: SafeArea(
         child: Column(
@@ -916,12 +992,12 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
             Text(
               'Description *',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: labelFontSize,
                 fontWeight: FontWeight.w600,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: screenWidth * 0.03),
             Consumer<AccountabilityProvider>(
               builder: (context, provider, child) {
                 return TextField(
@@ -938,22 +1014,22 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
                           .colorScheme
                           .onSurface
                           .withOpacity(0.4),
-                      fontSize: 14,
+                      fontSize: hintFontSize,
                     ),
                     filled: true,
                     fillColor: Theme.of(context).colorScheme.surfaceContainer,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       borderSide: BorderSide.none,
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       borderSide: BorderSide(
                         color: Theme.of(context).colorScheme.primary,
                         width: 2,
                       ),
                     ),
-                    contentPadding: const EdgeInsets.all(16),
+                    contentPadding: EdgeInsets.all(horizontalPadding),
                   ),
                 );
               },

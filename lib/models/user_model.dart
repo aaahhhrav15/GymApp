@@ -14,6 +14,9 @@ class UserProfile {
   final String? profileImage; // S3 key for profile image
   final DateTime? birthday; // Birthday date
   final String? gender; // Gender (e.g., 'Male', 'Female', 'Other')
+  final String? dietPreference; // Diet preference (e.g., 'veg', 'non-veg')
+  final String? lifestyle; // Lifestyle (e.g., 'sedentary', 'active', 'very-active')
+  final String? goal; // Goal (e.g., 'weight-loss', 'muscle-gain', 'maintenance')
 
   UserProfile({
     required this.id,
@@ -31,6 +34,9 @@ class UserProfile {
     this.profileImage,
     this.birthday,
     this.gender,
+    this.dietPreference,
+    this.lifestyle,
+    this.goal,
   });
 
   // Helper function to normalize date to local midnight (date-only, no time component)
@@ -97,6 +103,9 @@ class UserProfile {
       profileImage: json['profileImage'],
       birthday: normalizedBirthday,
       gender: json['gender'],
+      dietPreference: json['dietPreference'],
+      lifestyle: json['lifestyle'],
+      goal: json['goal'],
     );
   }
 
@@ -117,6 +126,9 @@ class UserProfile {
       'profileImage': profileImage,
       'birthday': birthday?.toIso8601String(),
       'gender': gender,
+      'dietPreference': dietPreference,
+      'lifestyle': lifestyle,
+      'goal': goal,
     };
   }
 

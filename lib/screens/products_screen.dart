@@ -285,19 +285,20 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   Widget _buildProductCard(Product product) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth * 0.06;
 
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.04,
-        vertical: screenWidth * 0.01,
+        horizontal: horizontalPadding,
+        vertical: screenWidth * 0.02,
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(screenWidth * 0.05),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
-            blurRadius: 8,
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
@@ -675,7 +676,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   BoxShadow(
                     color:
                         Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                    blurRadius: 6,
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ]
@@ -683,7 +684,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   BoxShadow(
                     color:
                         Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-                    blurRadius: 4,
+                    blurRadius: 6,
                     offset: const Offset(0, 1),
                   ),
                 ],
@@ -725,7 +726,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           boxShadow: [
             BoxShadow(
               color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-              blurRadius: 4,
+              blurRadius: 6,
               offset: const Offset(0, 1),
             ),
           ],
@@ -911,239 +912,227 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final horizontalPadding = screenWidth * 0.06;
+    final topSpacing = screenHeight * 0.025;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
-      body: Consumer<ProductProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            );
-          }
+      body: SafeArea(
+        child: Consumer<ProductProvider>(
+          builder: (context, provider, child) {
+            if (provider.isLoading) {
+              return Center(
+                child: CircularProgressIndicator(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              );
+            }
 
-          if (provider.error != null) {
-            return _buildErrorState(provider.error!);
-          }
+            if (provider.error != null) {
+              return _buildErrorState(provider.error!);
+            }
 
-          final filteredProducts =
-              _getFilteredAndSortedProducts(provider.products);
+            final filteredProducts =
+                _getFilteredAndSortedProducts(provider.products);
 
-          return Column(
-            children: [
-              // Modern Search Header
-              Container(
-                color: Theme.of(context).colorScheme.surface,
-                child: Column(
-                  children: [
-                    // Top App Bar
-                    Container(
-                      padding: EdgeInsets.fromLTRB(
-                        screenWidth * 0.04,
-                        MediaQuery.of(context).padding.top + screenWidth * 0.02,
-                        screenWidth * 0.04,
-                        screenWidth * 0.02,
-                      ),
-                      child: Row(
-                        children: [
-                          // GestureDetector(
-                          //   onTap: () => Navigator.pop(context),
-                          //   child: Container(
-                          //     padding: EdgeInsets.all(screenWidth * 0.02),
-                          //     decoration: BoxDecoration(
-                          //       color: Colors.grey[100],
-                          //       borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                          //     ),
-                          //     child: Icon(
-                          //       Icons.arrow_back_ios,
-                          //       size: screenWidth * 0.05,
-                          //       color: Colors.black87,
-                          //     ),
-                          //   ),
-                          // ),
-                          SizedBox(width: screenWidth * 0.03),
-                          Expanded(
-                            child: Text(
-                              AppLocalizations.of(context)!.products,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineLarge
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color:
-                                        Theme.of(context).colorScheme.onSurface,
-                                  ),
-                            ),
-                          ),
-                          // Orders Button
-                          Container(
-                            margin: EdgeInsets.only(right: screenWidth * 0.02),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
-                              borderRadius:
-                                  BorderRadius.circular(screenWidth * 0.06),
-                              boxShadow: [
-                                BoxShadow(
+            return Column(
+              children: [
+                // Modern Search Header
+                Container(
+                  color: Theme.of(context).colorScheme.surface,
+                  child: Column(
+                    children: [
+                      // Top App Bar
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          horizontalPadding,
+                          topSpacing,
+                          horizontalPadding,
+                          topSpacing * 0.8,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                AppLocalizations.of(context)!.products,
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.08,
+                                  fontWeight: FontWeight.bold,
                                   color: Theme.of(context)
                                       .colorScheme
-                                      .shadow
-                                      .withOpacity(0.08),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
+                                      .onSurface,
                                 ),
-                              ],
+                              ),
                             ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const OrdersScreen(),
-                                    ),
-                                  );
-                                },
+                            // Orders Button
+                            Container(
+                              margin: EdgeInsets.only(right: screenWidth * 0.02),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
                                 borderRadius:
                                     BorderRadius.circular(screenWidth * 0.06),
-                                child: Padding(
-                                  padding: EdgeInsets.all(screenWidth * 0.025),
-                                  child: Icon(
-                                    Icons.receipt_long,
-                                    size: screenWidth * 0.05,
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .shadow
+                                        .withOpacity(0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const OrdersScreen(),
+                                      ),
+                                    );
+                                  },
+                                  borderRadius:
+                                      BorderRadius.circular(screenWidth * 0.06),
+                                  child: Padding(
+                                    padding: EdgeInsets.all(screenWidth * 0.025),
+                                    child: Icon(
+                                      Icons.receipt_long,
+                                      size: screenWidth * 0.05,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
 
-                          Consumer<CartProvider>(
-                            builder: (context, cartProvider, child) {
-                              return Stack(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color:
-                                          Theme.of(context).colorScheme.surface,
-                                      borderRadius: BorderRadius.circular(
-                                          screenWidth * 0.06),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .shadow
-                                              .withOpacity(0.08),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const CartScreen(),
-                                            ),
-                                          );
-                                        },
+                            Consumer<CartProvider>(
+                              builder: (context, cartProvider, child) {
+                                return Stack(
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surface,
                                         borderRadius: BorderRadius.circular(
                                             screenWidth * 0.06),
-                                        child: Padding(
-                                          padding: EdgeInsets.all(
-                                              screenWidth * 0.025),
-                                          child: Icon(
-                                            Icons.shopping_cart_outlined,
-                                            size: screenWidth * 0.05,
+                                        boxShadow: [
+                                          BoxShadow(
                                             color: Theme.of(context)
                                                 .colorScheme
-                                                .primary,
+                                                .shadow
+                                                .withOpacity(0.05),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const CartScreen(),
+                                              ),
+                                            );
+                                          },
+                                          borderRadius: BorderRadius.circular(
+                                              screenWidth * 0.06),
+                                          child: Padding(
+                                            padding: EdgeInsets.all(
+                                                screenWidth * 0.025),
+                                            child: Icon(
+                                              Icons.shopping_cart_outlined,
+                                              size: screenWidth * 0.05,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  if (cartProvider.cartCount > 0)
-                                    Positioned(
-                                      right: 0,
-                                      top: 0,
-                                      child: Container(
-                                        padding:
-                                            EdgeInsets.all(screenWidth * 0.008),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .error,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        constraints: BoxConstraints(
-                                          minWidth: screenWidth * 0.04,
-                                          minHeight: screenWidth * 0.04,
-                                        ),
-                                        child: Text(
-                                          cartProvider.cartCount > 99
-                                              ? '99+'
-                                              : cartProvider.cartCount
-                                                  .toString(),
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .labelSmall
-                                              ?.copyWith(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onError,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: screenWidth * 0.025,
-                                              ),
-                                          textAlign: TextAlign.center,
+                                    if (cartProvider.cartCount > 0)
+                                      Positioned(
+                                        right: 0,
+                                        top: 0,
+                                        child: Container(
+                                          padding: EdgeInsets.all(
+                                              screenWidth * 0.008),
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .error,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          constraints: BoxConstraints(
+                                            minWidth: screenWidth * 0.04,
+                                            minHeight: screenWidth * 0.04,
+                                          ),
+                                          child: Text(
+                                            cartProvider.cartCount > 99
+                                                ? '99+'
+                                                : cartProvider.cartCount
+                                                    .toString(),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onError,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: screenWidth * 0.025,
+                                                ),
+                                            textAlign: TextAlign.center,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Search Bar
-                    Container(
-                      margin: EdgeInsets.fromLTRB(
-                        screenWidth * 0.04,
-                        0,
-                        screenWidth * 0.04,
-                        screenWidth * 0.03,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(screenWidth * 0.06),
-                        border: Border.all(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .outline
-                              .withOpacity(0.2),
-                          width: 1.5,
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
                         ),
-                        boxShadow: [
-                          BoxShadow(
+                      ),
+
+                      // Search Bar
+                      Container(
+                        margin: EdgeInsets.fromLTRB(
+                          horizontalPadding,
+                          0,
+                          horizontalPadding,
+                          topSpacing * 0.8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(screenWidth * 0.06),
+                          border: Border.all(
                             color: Theme.of(context)
                                 .colorScheme
-                                .shadow
-                                .withOpacity(0.08),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                                .outline
+                                .withOpacity(0.2),
+                            width: 1.5,
                           ),
-                        ],
-                      ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .shadow
+                                  .withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
                       child: TextField(
                         controller: _searchController,
                         decoration: InputDecoration(
@@ -1213,62 +1202,62 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       ),
                     ),
 
-                    // Filter Tags
-                    Container(
-                      height: screenWidth * 0.13,
-                      margin: EdgeInsets.only(bottom: screenWidth * 0.03),
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.04),
-                        children: [
-                          _buildFilterChip('All', _selectedCategory == null),
-                          ...productCategories.map((category) =>
-                              _buildFilterChip(
-                                  category, _selectedCategory == category)),
-                          Container(
-                            margin: EdgeInsets.only(left: screenWidth * 0.03),
-                            child: _buildSortButton(),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Divider
-                    Container(
-                      height: 1,
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Products List
-              Expanded(
-                child: RefreshIndicator(
-                  color: Theme.of(context).colorScheme.primary,
-                  onRefresh: () async {
-                    Provider.of<ProductProvider>(context, listen: false)
-                        .fetchProducts();
-                  },
-                  child: filteredProducts.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          padding: EdgeInsets.only(
-                            top: screenWidth * 0.01,
-                            bottom: MediaQuery.of(context).size.height *
-                                0.15, // Increased to account for navigation bar
-                          ),
-                          itemCount: filteredProducts.length,
-                          itemBuilder: (context, index) {
-                            return _buildProductCard(filteredProducts[index]);
-                          },
+                      // Filter Tags
+                      Container(
+                        height: screenWidth * 0.13,
+                        margin: EdgeInsets.only(bottom: topSpacing * 0.8),
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: horizontalPadding),
+                          children: [
+                            _buildFilterChip('All', _selectedCategory == null),
+                            ...productCategories.map((category) =>
+                                _buildFilterChip(
+                                    category, _selectedCategory == category)),
+                            Container(
+                              margin: EdgeInsets.only(left: screenWidth * 0.03),
+                              child: _buildSortButton(),
+                            ),
+                          ],
                         ),
+                      ),
+
+                      // Divider
+                      Container(
+                        height: 1,
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
+
+                // Products List
+                Expanded(
+                  child: RefreshIndicator(
+                    color: Theme.of(context).colorScheme.primary,
+                    onRefresh: () async {
+                      Provider.of<ProductProvider>(context, listen: false)
+                          .fetchProducts();
+                    },
+                    child: filteredProducts.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            padding: EdgeInsets.only(
+                              top: topSpacing * 0.4,
+                              bottom: screenHeight * 0.15,
+                            ),
+                            itemCount: filteredProducts.length,
+                            itemBuilder: (context, index) {
+                              return _buildProductCard(filteredProducts[index]);
+                            },
+                          ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

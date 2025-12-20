@@ -21,6 +21,7 @@ import 'screens/awareness_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/citations_screen.dart';
+import 'screens/onboarding_flow_screen.dart';
 import 'services/token_manager.dart';
 import 'widgets/auth_wrapper.dart';
 import 'providers/accountability_provider.dart';
@@ -41,6 +42,7 @@ import 'providers/body_composition_provider.dart';
 import 'providers/terms_provider.dart';
 import 'providers/notifications_provider.dart';
 import 'providers/locale_provider.dart';
+import 'providers/onboarding_provider.dart';
 import 'theme/app_theme.dart';
 import 'services/connectivity_service.dart';
 import 'l10n/app_localizations.dart';
@@ -293,6 +295,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           },
         ),
         ChangeNotifierProvider(create: (_) => TermsProvider()),
+        ChangeNotifierProvider(create: (_) => OnboardingProvider()),
       ],
       child: Consumer2<ThemeProvider, LocaleProvider>(
         builder: (context, themeProvider, localeProvider, child) {
@@ -325,6 +328,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               final publicRoutes = [
                 '/splash',
                 '/onboarding',
+                '/onboarding-flow',
                 '/register',
                 '/login',
               ];
@@ -336,6 +340,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                     return MaterialPageRoute(builder: (_) => const SplashScreen());
                   case '/onboarding':
                     return MaterialPageRoute(builder: (_) => const OnboardingScreen());
+                  case '/onboarding-flow':
+                    return MaterialPageRoute(builder: (_) => const OnboardingFlowScreen());
                   case '/register':
                     return MaterialPageRoute(builder: (_) => const RegisterScreen());
                   case '/login':
@@ -357,6 +363,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               // Public routes
               '/splash': (context) => const SplashScreen(),
               '/onboarding': (context) => const OnboardingScreen(),
+              '/onboarding-flow': (context) => const OnboardingFlowScreen(),
               '/register': (context) => const RegisterScreen(),
               '/login': (context) => const LoginScreen(),
               // Protected routes - wrapped with AuthWrapper
