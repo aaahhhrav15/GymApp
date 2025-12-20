@@ -260,8 +260,6 @@ class WaterNotificationService {
         notificationDetails,
         payload: 'water_reminder',
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
       );
 
       debugPrint(

@@ -56,21 +56,21 @@ dependencies:
 
   # Step Tracking & Sensors
   pedometer: ^4.0.1
-  permission_handler: ^11.1.0
+  permission_handler: ^12.0.1
 
   # Authentication
-  google_sign_in: ^6.1.6
+  google_sign_in: ^7.2.0
 
   # Image & Media
   image_picker: ^1.0.4
   video_player: ^2.7.2
 
   # Notifications
-  flutter_local_notifications: ^17.2.2
-  timezone: ^0.9.4
+  flutter_local_notifications: ^19.5.0
+  timezone: ^0.10.1
 
   # Development Dependencies (for testing step tracking)
-  sensors_plus: ^4.0.2
+  sensors_plus: ^7.0.0
   mobile_scanner: ^7.1.2
 
   flutter_dotenv: ^6.0.0
@@ -87,8 +87,8 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

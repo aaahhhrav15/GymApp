@@ -40,8 +40,8 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = 36
-        versionCode = 21
-        versionName = "2.0.1"
+        versionCode = 32
+        versionName = "2.0.3"
         
         // Support for 16KB page sizes (Android 15 requirement)
         ndk {
@@ -54,7 +54,7 @@ android {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String?
             keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+            storeFile = keystoreProperties["storeFile"]?.let { rootProject.file(it) }
             storePassword = keystoreProperties["storePassword"] as String?
         }
     }
@@ -79,8 +79,8 @@ android {
         }
     }
 
-    // Support for 16KB page sizes
-    packagingOptions {
+    // Support for 16KB page sizes (Android 15+ requirement)
+    packaging {
         jniLibs {
             useLegacyPackaging = false
         }
@@ -101,7 +101,7 @@ flutter {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     
     // AndroidX Core for edge-to-edge support
     implementation("androidx.core:core-ktx:1.12.0")

@@ -11,7 +11,15 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || 
             intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             
-            Log.d("BootReceiver", "Device booted or app updated, starting step counter service")
+            Log.d("BootReceiver", "Device booted or app updated")
+            
+            // Android 15+ (API 35+) restricts starting foreground services with restricted types
+            // from BOOT_COMPLETED receivers. The service should be started when the app is opened instead.
+            if (Build.VERSION.SDK_INT >= 35) { // Android 15 (API 35)
+                Log.d("BootReceiver", "Android 15+ detected: Skipping service start from BOOT_COMPLETED to comply with restrictions")
+                // Service will be started when user opens the app
+                return
+            }
             
             val serviceIntent = Intent(context, StepCounterService::class.java).apply {
                 action = StepCounterService.ACTION_START_SERVICE
