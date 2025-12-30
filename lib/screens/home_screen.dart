@@ -568,52 +568,104 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Converts a string to title case (e.g., "john doe" -> "John Doe")
+  String _toTitleCase(String text) {
+    if (text.isEmpty) return text;
+    return text.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
   Widget _buildGreeting() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return Consumer<ProfileProvider>(
       builder: (context, profileProvider, child) {
         final l10n = AppLocalizations.of(context)!;
         // Get username from ProfileProvider, fallback to 'User' if not available
-        final userName = profileProvider.userProfile?.name ?? 'User';
+        final userName = _toTitleCase(profileProvider.userProfile?.name ?? 'User');
         final now = DateTime.now();
         final hour = now.hour;
 
         String greeting;
+        IconData greetingIcon;
+        List<Color> greetingGradient;
+        
         if (hour >= 5 && hour < 12) {
           greeting = l10n.goodMorning;
+          greetingIcon = Icons.wb_sunny_rounded;
+          greetingGradient = [Colors.amber.shade400, Colors.orange.shade500];
         } else if (hour >= 12 && hour < 17) {
           greeting = l10n.goodAfternoon;
+          greetingIcon = Icons.wb_sunny_outlined;
+          greetingGradient = [Colors.orange.shade400, Colors.deepOrange.shade500];
         } else {
           greeting = l10n.goodEvening;
+          greetingIcon = Icons.nightlight_round;
+          greetingGradient = [Colors.indigo.shade400, Colors.purple.shade500];
         }
 
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.01, vertical: screenWidth * 0.02),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Left side - Greeting
+              // Left side - Greeting with icon
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      greeting,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.7),
+                    // Greeting icon with gradient background
+                    Container(
+                      padding: EdgeInsets.all(screenWidth * 0.025),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: greetingGradient,
+                        ),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                        boxShadow: [
+                          BoxShadow(
+                            color: greetingGradient[0].withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        greetingIcon,
+                        color: Colors.white,
+                        size: screenWidth * 0.055,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      userName,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
+                    SizedBox(width: screenWidth * 0.03),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            greeting,
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.035,
+                              fontWeight: FontWeight.w500,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.6),
+                            ),
+                          ),
+                          SizedBox(height: screenWidth * 0.005),
+                          Text(
+                            userName,
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.055,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -622,94 +674,135 @@ class _HomeScreenState extends State<HomeScreen> {
               // Right side - Notification and QR Scanner Icons
               Row(
                 children: [
-                  // Notification Icon
+                  // Notification Icon - Vibrant design
                   Consumer<NotificationsProvider>(
                     builder: (context, notificationsProvider, child) {
-                      return Stack(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .secondary
-                                  .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
+                      final hasUnread = notificationsProvider.unreadCount > 0;
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationsScreen(),
                             ),
-                            child: IconButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const NotificationsScreen(),
-                                  ),
-                                );
-                              },
-                              icon: Icon(
-                                Icons.notifications_outlined,
-                                color: Theme.of(context).colorScheme.secondary,
-                                size: 28,
+                          );
+                        },
+                        child: Container(
+                          width: screenWidth * 0.12,
+                          height: screenWidth * 0.12,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: hasUnread
+                                  ? [Colors.orange.shade400, Colors.deepOrange.shade500]
+                                  : [Colors.indigo.shade400, Colors.indigo.shade600],
+                            ),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: hasUnread 
+                                    ? Colors.deepOrange.withOpacity(0.4) 
+                                    : Colors.indigo.withOpacity(0.4),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
                               ),
-                              tooltip: 'Notifications',
-                            ),
+                            ],
                           ),
-                          if (notificationsProvider.unreadCount > 0)
-                            Positioned(
-                              right: 8,
-                              top: 8,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 16,
-                                  minHeight: 16,
-                                ),
-                                child: Text(
-                                  notificationsProvider.unreadCount > 99
-                                      ? '99+'
-                                      : notificationsProvider.unreadCount
-                                          .toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Notification icon
+                              Icon(
+                                hasUnread 
+                                    ? Icons.notifications_active_rounded 
+                                    : Icons.notifications_rounded,
+                                color: Colors.white,
+                                size: screenWidth * 0.06,
                               ),
-                            ),
-                        ],
+                              // Badge
+                              if (hasUnread)
+                                Positioned(
+                                  right: screenWidth * 0.005,
+                                  top: screenWidth * 0.005,
+                                  child: Container(
+                                    padding: EdgeInsets.all(screenWidth * 0.012),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.deepOrange.shade500,
+                                        width: 2,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    constraints: BoxConstraints(
+                                      minWidth: screenWidth * 0.05,
+                                      minHeight: screenWidth * 0.05,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        notificationsProvider.unreadCount > 9
+                                            ? '9+'
+                                            : notificationsProvider.unreadCount.toString(),
+                                        style: TextStyle(
+                                          color: Colors.deepOrange.shade600,
+                                          fontSize: screenWidth * 0.028,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       );
                     },
                   ),
-                  const SizedBox(width: 8),
-                  // QR Scanner Icon
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: IconButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const QrScannerScreen(),
+                  SizedBox(width: screenWidth * 0.03),
+                  // QR Scanner Icon - Vibrant design
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const QrScannerScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: screenWidth * 0.12,
+                      height: screenWidth * 0.12,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.teal.shade400,
+                            Colors.teal.shade600,
+                          ],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.teal.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
-                        );
-                      },
-                      icon: Icon(
-                        Icons.qr_code_scanner,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 28,
+                        ],
                       ),
-                      tooltip: 'Scan QR Code',
+                      child: Icon(
+                        Icons.qr_code_scanner_rounded,
+                        color: Colors.white,
+                        size: screenWidth * 0.055,
+                      ),
                     ),
                   ),
                 ],
@@ -950,59 +1043,105 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDietPlanWidget(AppLocalizations l10n) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return GestureDetector(
       onTap: _navigateToNutritionDetail,
       child: Container(
-        height: 120,
+        height: screenWidth * 0.3,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(screenWidth * 0.05),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-              blurRadius: 15,
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+              blurRadius: 20,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
           children: [
-            // Image Container
+            // Image Container with gradient overlay
             Container(
-              width: 120,
-              height: 120,
+              width: screenWidth * 0.3,
+              height: screenWidth * 0.3,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(screenWidth * 0.05),
                 image: const DecorationImage(
                   image: AssetImage('assets/images/DIET.jpg'),
                   fit: BoxFit.cover,
                 ),
               ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(screenWidth * 0.05),
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.transparent,
+                      Theme.of(context).colorScheme.surface.withOpacity(0.3),
+                    ],
+                  ),
+                ),
+              ),
             ),
 
-            const SizedBox(width: 20),
+            SizedBox(width: screenWidth * 0.04),
 
-            // Text Content
+            // Text Content with icon
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
+                padding: EdgeInsets.symmetric(vertical: screenWidth * 0.04),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      l10n.dietPlan,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(screenWidth * 0.02),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.green.shade400,
+                                Colors.green.shade600,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.green.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.restaurant_menu_rounded,
+                            color: Colors.white,
+                            size: screenWidth * 0.045,
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.025),
+                        Text(
+                          l10n.dietPlan,
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.048,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: screenWidth * 0.02),
                     Text(
                       l10n.viewYourPersonalizedDiet,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: screenWidth * 0.032,
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
@@ -1014,13 +1153,20 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Arrow Icon
+            // Arrow Icon with background
             Padding(
-              padding: const EdgeInsets.only(right: 20),
-              child: Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey[400],
+              padding: EdgeInsets.only(right: screenWidth * 0.04),
+              child: Container(
+                padding: EdgeInsets.all(screenWidth * 0.02),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                ),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: screenWidth * 0.05,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                ),
               ),
             ),
           ],
@@ -1030,59 +1176,105 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildWorkoutPlanWidget(AppLocalizations l10n) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return GestureDetector(
       onTap: _navigateToWorkoutPlansDetail,
       child: Container(
-        height: 120,
+        height: screenWidth * 0.3,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(screenWidth * 0.05),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-              blurRadius: 15,
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+              blurRadius: 20,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
           children: [
-            // Image Container
+            // Image Container with gradient overlay
             Container(
-              width: 120,
-              height: 120,
+              width: screenWidth * 0.3,
+              height: screenWidth * 0.3,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(screenWidth * 0.05),
                 image: const DecorationImage(
                   image: AssetImage('assets/images/WORKOUT.jpg'),
                   fit: BoxFit.cover,
                 ),
               ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(screenWidth * 0.05),
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.transparent,
+                      Theme.of(context).colorScheme.surface.withOpacity(0.3),
+                    ],
+                  ),
+                ),
+              ),
             ),
 
-            const SizedBox(width: 20),
+            SizedBox(width: screenWidth * 0.04),
 
-            // Text Content
+            // Text Content with icon
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
+                padding: EdgeInsets.symmetric(vertical: screenWidth * 0.04),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      l10n.workoutPlan,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(screenWidth * 0.02),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.deepOrange.shade400,
+                                Colors.deepOrange.shade600,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.deepOrange.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.fitness_center_rounded,
+                            color: Colors.white,
+                            size: screenWidth * 0.045,
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.025),
+                        Text(
+                          l10n.workoutPlan,
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.048,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: screenWidth * 0.02),
                     Text(
                       l10n.knowYourWorkoutPlans,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: screenWidth * 0.032,
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
@@ -1094,13 +1286,20 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Arrow Icon
+            // Arrow Icon with background
             Padding(
-              padding: const EdgeInsets.only(right: 20),
-              child: Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey[400],
+              padding: EdgeInsets.only(right: screenWidth * 0.04),
+              child: Container(
+                padding: EdgeInsets.all(screenWidth * 0.02),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                ),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: screenWidth * 0.05,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                ),
               ),
             ),
           ],
@@ -1110,6 +1309,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAccountabilityWidget(AppLocalizations l10n) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -1120,56 +1321,103 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
       child: Container(
-        height: 120,
+        height: screenWidth * 0.3,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(screenWidth * 0.05),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-              blurRadius: 15,
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+              blurRadius: 20,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
           children: [
-            // Image Container
+            // Image Container with gradient overlay
             Container(
-              width: 120,
-              height: 120,
+              width: screenWidth * 0.3,
+              height: screenWidth * 0.3,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(screenWidth * 0.05),
                 image: const DecorationImage(
                   image: AssetImage('assets/images/ACCOUNTABILITY.jpg'),
                   fit: BoxFit.cover,
                 ),
               ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(screenWidth * 0.05),
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.transparent,
+                      Theme.of(context).colorScheme.surface.withOpacity(0.3),
+                    ],
+                  ),
+                ),
+              ),
             ),
 
-            const SizedBox(width: 20),
+            SizedBox(width: screenWidth * 0.04),
 
-            // Text Content
+            // Text Content with icon
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
+                padding: EdgeInsets.symmetric(vertical: screenWidth * 0.04),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      l10n.accountability,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(screenWidth * 0.02),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.purple.shade400,
+                                Colors.purple.shade600,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.purple.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.white,
+                            size: screenWidth * 0.045,
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.025),
+                        Flexible(
+                          child: Text(
+                            l10n.accountability,
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.048,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: screenWidth * 0.02),
                     Text(
                       l10n.trackProgressWithPhotos,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: screenWidth * 0.032,
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
@@ -1181,13 +1429,20 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Arrow Icon
+            // Arrow Icon with background
             Padding(
-              padding: const EdgeInsets.only(right: 20),
-              child: Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey[400],
+              padding: EdgeInsets.only(right: screenWidth * 0.04),
+              child: Container(
+                padding: EdgeInsets.all(screenWidth * 0.02),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                ),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: screenWidth * 0.05,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                ),
               ),
             ),
           ],
@@ -1197,6 +1452,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildResultWidget(AppLocalizations l10n) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -1207,56 +1464,100 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
       child: Container(
-        height: 120,
+        height: screenWidth * 0.3,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(screenWidth * 0.05),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-              blurRadius: 15,
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+              blurRadius: 20,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
           children: [
-            // Image Container
+            // Image Container with gradient overlay
             Container(
-              width: 120,
-              height: 120,
+              width: screenWidth * 0.3,
+              height: screenWidth * 0.3,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(screenWidth * 0.05),
                 image: const DecorationImage(
                   image: AssetImage('assets/images/RESULTS.jpg'),
                   fit: BoxFit.cover,
                 ),
               ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(screenWidth * 0.05),
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.transparent,
+                      Theme.of(context).colorScheme.surface.withOpacity(0.3),
+                    ],
+                  ),
+                ),
+              ),
             ),
 
-            const SizedBox(width: 20),
+            SizedBox(width: screenWidth * 0.04),
 
-            // Text Content
+            // Text Content with icon
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
+                padding: EdgeInsets.symmetric(vertical: screenWidth * 0.04),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      l10n.results,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(screenWidth * 0.02),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.teal.shade400,
+                                Colors.teal.shade600,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.teal.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.trending_up_rounded,
+                            color: Colors.white,
+                            size: screenWidth * 0.045,
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.025),
+                        Text(
+                          l10n.results,
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.048,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: screenWidth * 0.02),
                     Text(
                       l10n.viewYourProgress,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: screenWidth * 0.032,
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
@@ -1268,13 +1569,20 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Arrow Icon
+            // Arrow Icon with background
             Padding(
-              padding: const EdgeInsets.only(right: 20),
-              child: Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey[400],
+              padding: EdgeInsets.only(right: screenWidth * 0.04),
+              child: Container(
+                padding: EdgeInsets.all(screenWidth * 0.02),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                ),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: screenWidth * 0.05,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                ),
               ),
             ),
           ],

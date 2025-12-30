@@ -4,8 +4,6 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../providers/accountability_provider.dart';
-import '../widgets/report_dialog.dart';
-import '../widgets/block_user_dialog.dart';
 import '../l10n/app_localizations.dart';
 
 class AccountabilityScreen extends StatefulWidget {
@@ -568,90 +566,11 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
               topLeft: Radius.circular(borderRadius),
               topRight: Radius.circular(borderRadius),
             ),
-            child: Stack(
-              children: [
-                _buildImageWidget(
-                  imageUrl,
-                  width: double.infinity,
-                  height: 300,
-                  fit: BoxFit.cover,
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: PopupMenuButton<String>(
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surface
-                            .withOpacity(0.8),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.more_vert,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        size: 20,
-                      ),
-                    ),
-                    onSelected: (value) {
-                      if (value == 'delete') {
-                        _showDeleteConfirmation(id, provider);
-                      } else if (value == 'report') {
-                        _showReportDialog(id, description);
-                      } else if (value == 'block') {
-                        _showBlockDialog(image);
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => [
-                      PopupMenuItem<String>(
-                        value: 'report',
-                        child: Row(
-                          children: [
-                            Icon(Icons.flag_outlined, color: Colors.orange),
-                            const SizedBox(width: 8),
-                            Text(AppLocalizations.of(context)!.report,
-                                style: TextStyle(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface)),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem<String>(
-                        value: 'block',
-                        child: Row(
-                          children: [
-                            Icon(Icons.block, color: Colors.red),
-                            const SizedBox(width: 8),
-                            Text(AppLocalizations.of(context)!.blockUser,
-                                style: TextStyle(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface)),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem<String>(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete,
-                                color: Theme.of(context).colorScheme.error),
-                            const SizedBox(width: 8),
-                            Text(AppLocalizations.of(context)!.delete,
-                                style: TextStyle(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            child: _buildImageWidget(
+              imageUrl,
+              width: double.infinity,
+              height: 300,
+              fit: BoxFit.cover,
             ),
           ),
           // Content
@@ -1135,28 +1054,4 @@ class _AccountabilityScreenState extends State<AccountabilityScreen>
     }
   }
 
-  void _showReportDialog(String contentId, String description) {
-    showDialog(
-      context: context,
-      builder: (context) => ReportDialog(
-        contentType: 'accountability',
-        contentId: contentId,
-        contentTitle:
-            description.isNotEmpty ? description : 'Accountability Post',
-      ),
-    );
-  }
-
-  void _showBlockDialog(Map<String, dynamic> image) {
-    final String? userId = image['userId']?.toString();
-    if (userId != null) {
-      showDialog(
-        context: context,
-        builder: (context) => BlockUserDialog(
-          userId: userId,
-          userName: 'User', // We don't have user name in accountability data
-        ),
-      );
-    }
-  }
 }

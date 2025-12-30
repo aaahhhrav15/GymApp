@@ -315,6 +315,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             supportedLocales: const [
               Locale('en', ''), // English
               Locale('hi', ''), // Hindi
+              Locale('mr', ''), // Marathi
             ],
             builder: (context, child) {
               return SystemUIHandler(

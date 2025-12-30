@@ -7,6 +7,7 @@ import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
 import 'app_localizations_hi.dart';
+import 'app_localizations_mr.dart';
 
 // ignore_for_file: type=lint
 
@@ -95,7 +96,8 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('hi')
+    Locale('hi'),
+    Locale('mr')
   ];
 
   /// The application title
@@ -113,7 +115,7 @@ abstract class AppLocalizations {
   /// No description provided for @todayReport.
   ///
   /// In en, this message translates to:
-  /// **'Today Report'**
+  /// **'Today\'s Report'**
   String get todayReport;
 
   /// No description provided for @reportFor.
@@ -739,6 +741,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'हिंदी'**
   String get hindi;
+
+  /// No description provided for @marathi.
+  ///
+  /// In en, this message translates to:
+  /// **'Marathi'**
+  String get marathi;
 
   /// No description provided for @theme.
   ///
@@ -3044,6 +3052,24 @@ abstract class AppLocalizations {
   /// **'Date of Birth'**
   String get dateOfBirth;
 
+  /// No description provided for @personalInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal Information'**
+  String get personalInformation;
+
+  /// No description provided for @physicalStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Physical Stats'**
+  String get physicalStats;
+
+  /// No description provided for @yearsOld.
+  ///
+  /// In en, this message translates to:
+  /// **'years old'**
+  String get yearsOld;
+
   /// No description provided for @saveChanges.
   ///
   /// In en, this message translates to:
@@ -3803,7 +3829,7 @@ abstract class AppLocalizations {
   /// No description provided for @bmiLabel.
   ///
   /// In en, this message translates to:
-  /// **'BMI'**
+  /// **'Body Mass Index (BMI)'**
   String get bmiLabel;
 
   /// No description provided for @systemDefault.
@@ -4370,7 +4396,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['en', 'hi'].contains(locale.languageCode);
+      <String>['en', 'hi', 'mr'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -4383,6 +4409,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsEn();
     case 'hi':
       return AppLocalizationsHi();
+    case 'mr':
+      return AppLocalizationsMr();
   }
 
   throw FlutterError(

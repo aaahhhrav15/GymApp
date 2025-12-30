@@ -60,6 +60,9 @@ class LocaleProvider extends ChangeNotifier {
   /// Check if current language is Hindi
   bool get isHindi => _locale.languageCode == 'hi';
 
+  /// Check if current language is Marathi
+  bool get isMarathi => _locale.languageCode == 'mr';
+
   /// Get current language name
   String get currentLanguageName {
     switch (_locale.languageCode) {
@@ -67,6 +70,8 @@ class LocaleProvider extends ChangeNotifier {
         return 'English';
       case 'hi':
         return 'हिंदी';
+      case 'mr':
+        return 'मराठी';
       default:
         return 'English';
     }

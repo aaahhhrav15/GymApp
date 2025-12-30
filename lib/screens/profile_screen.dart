@@ -19,22 +19,14 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
-  bool _biometricEnabled = true;
   bool _isLoggingOut = false;
 
   @override
   void initState() {
     super.initState();
-    // Initialize profile provider - first from local cache, then refresh from backend
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final profileProvider = context.read<ProfileProvider>();
-
-      // Load profile with connectivity-aware strategy
-      // This will show local data immediately if available, then sync with backend
       await profileProvider.fetchUserProfile();
-
       debugPrint(
           'ProfileScreen: Profile loaded - Status: ${profileProvider.syncStatus}');
     });
@@ -46,203 +38,1441 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
-    // Responsive dimensions
-    final horizontalPadding = screenWidth * 0.06;
-    final topPadding = screenHeight * 0.025;
-    final bottomPadding = screenHeight * 0.12;
-    final headerFontSize = screenWidth * 0.07;
-    final sectionSpacing = screenHeight * 0.04;
-    final cardSpacing = screenHeight * 0.03;
-
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
-      body: SafeArea(
-        child: Consumer<ProfileProvider>(
-          builder: (context, profileProvider, child) {
-            if (profileProvider.isLoading) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
+      body: Consumer<ProfileProvider>(
+        builder: (context, profileProvider, child) {
+          if (profileProvider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            if (profileProvider.hasError) {
-              return _buildErrorState(l10n, profileProvider.error!);
-            }
+          if (profileProvider.hasError) {
+            return _buildErrorState(l10n, profileProvider.error!);
+          }
 
-            final userProfile = profileProvider.userProfile;
-            if (userProfile == null) {
-              return _buildEmptyState(l10n);
-            }
+          final userProfile = profileProvider.userProfile;
+          if (userProfile == null) {
+            return _buildEmptyState(l10n);
+          }
 
-            return RefreshIndicator(
-              onRefresh: () async {
-                // Use syncWithBackend instead of fetchUserProfile for better feedback
-                await profileProvider.syncWithBackend();
-              },
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  left: horizontalPadding,
-                  right: horizontalPadding,
-                  top: topPadding,
-                  bottom: bottomPadding,
+          return RefreshIndicator(
+            onRefresh: () async {
+              await profileProvider.syncWithBackend();
+            },
+            child: CustomScrollView(
+              slivers: [
+                // Custom App Bar with Profile Header
+                SliverToBoxAdapter(
+                  child: _buildProfileHeader(l10n, userProfile, profileProvider),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: TextButton.icon(
-                        onPressed: () =>
-                            Navigator.of(context).pushNamed('/citations'),
-                        icon: const Icon(Icons.info_outline),
-                        label: Text(l10n.medicalReferences),
+
+                // Content
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth * 0.05,
+                    vertical: screenHeight * 0.02,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // Personal Information is now in the profile header
+
+                      // Physical Stats Card
+                      _buildPhysicalStatsCard(l10n, userProfile),
+
+                      SizedBox(height: screenHeight * 0.02),
+
+                      // Membership Card
+                      _buildMembershipCard(l10n, userProfile),
+
+                      SizedBox(height: screenHeight * 0.02),
+
+                      // Settings Section
+                      _buildSettingsCard(l10n),
+
+                      SizedBox(height: screenHeight * 0.02),
+
+                      // Account Actions
+                      _buildAccountActionsCard(l10n),
+
+                      SizedBox(height: screenHeight * 0.12),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader(
+      AppLocalizations l10n, UserProfile userProfile, ProfileProvider provider) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: screenWidth * 0.05,
+          vertical: screenHeight * 0.015,
+        ),
+        child: Column(
+          children: [
+            // Top Bar with Title and Edit Button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.profile,
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.07,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                  ),
+                  child: IconButton(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen(),
+                        ),
+                      );
+                      if (result == true) {
+                        provider.fetchUserProfile();
+                      }
+                    },
+                    icon: Icon(
+                      Icons.edit_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: screenWidth * 0.055,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: screenHeight * 0.025),
+
+            // Profile Card
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(screenWidth * 0.06),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(screenWidth * 0.05),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Profile Image with gradient ring
+                  Container(
+                    padding: EdgeInsets.all(screenWidth * 0.01),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.tertiary,
+                        ],
                       ),
                     ),
-                    // Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          l10n.profile,
-                          style: TextStyle(
-                            fontSize: headerFontSize,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
+                    child: Container(
+                      padding: EdgeInsets.all(screenWidth * 0.008),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Theme.of(context).colorScheme.surface,
+                      ),
+                      child: Container(
+                        width: screenWidth * 0.35, // Increased from 0.26 to 0.35
+                        height: screenWidth * 0.35, // Increased from 0.26 to 0.35
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
                         ),
-                        // Edit Profile Button
-                        IconButton(
-                          onPressed: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const EditProfileScreen(),
-                              ),
-                            );
+                        child: ClipOval(
+                          child: userProfile.profileImageUrl != null
+                              ? Image.network(
+                                  userProfile.profileImageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return _buildDefaultAvatar(screenWidth);
+                                  },
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return _buildLoadingAvatar(screenWidth);
+                                  },
+                                )
+                              : _buildDefaultAvatar(screenWidth),
+                        ),
+                      ),
+                    ),
+                  ),
 
-                            // Refresh profile if changes were made
-                            if (result == true) {
-                              profileProvider.fetchUserProfile();
-                            }
-                          },
-                          icon: Icon(
-                            Icons.edit_outlined,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: screenWidth * 0.06,
-                          ),
-                          style: IconButton.styleFrom(
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .primaryContainer
-                                .withOpacity(0.3),
-                            padding: EdgeInsets.all(screenWidth * 0.03),
+                  SizedBox(height: screenHeight * 0.025),
+
+                  // Name with clean styling
+                  Text(
+                    _toTitleCase(userProfile.name),
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.062,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      letterSpacing: 0.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+
+                  SizedBox(height: screenHeight * 0.015),
+
+                  // Phone Number with clean styling
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.045,
+                      vertical: screenHeight * 0.01,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.phone_outlined,
+                          size: screenWidth * 0.042,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        SizedBox(width: screenWidth * 0.025),
+                        Text(
+                          userProfile.phone,
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: sectionSpacing),
+                  ),
 
-                    // Profile Card
-                    _buildProfileCard(l10n, userProfile),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-                    SizedBox(height: cardSpacing * 0.5),
+  Widget _buildPersonalInfoCard(AppLocalizations l10n, UserProfile userProfile) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
 
-                    // Sync Status Indicator
-                    //_buildSyncStatusIndicator(profileProvider),
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.05),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(screenWidth * 0.04),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.028),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.indigo.shade400,
+                      Colors.indigo.shade600,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.indigo.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.badge_rounded,
+                  color: Colors.white,
+                  size: screenWidth * 0.055,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.035),
+              Text(
+                l10n.personalInformation,
+                style: TextStyle(
+                  fontSize: screenWidth * 0.045,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
 
-                    SizedBox(height: cardSpacing),
+          SizedBox(height: screenHeight * 0.025),
 
-                    // Membership Details Card
-                    _buildMembershipCard(l10n, userProfile),
+          // Info Grid
+          Row(
+            children: [
+              // Gender
+              Expanded(
+                child: _buildInfoItem(
+                  icon: userProfile.gender?.toLowerCase() == 'male'
+                      ? Icons.male
+                      : userProfile.gender?.toLowerCase() == 'female'
+                          ? Icons.female
+                          : Icons.person_outline,
+                  label: l10n.gender,
+                  value: userProfile.gender != null 
+                      ? _capitalizeFirst(userProfile.gender!) 
+                      : l10n.notSet,
+                  color: Colors.blue,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.04),
+              // Date of Birth
+              Expanded(
+                child: _buildInfoItem(
+                  icon: Icons.cake_outlined,
+                  label: l10n.dateOfBirth,
+                  value: userProfile.birthday != null
+                      ? _formatDate(userProfile.birthday!)
+                      : l10n.notSet,
+                  color: Colors.pink,
+                ),
+              ),
+            ],
+          ),
 
-                    SizedBox(height: cardSpacing),
+          if (userProfile.birthday != null) ...[
+            SizedBox(height: screenHeight * 0.015),
+            Center(
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.04,
+                  vertical: screenHeight * 0.008,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.05),
+                ),
+                child: Text(
+                  '${_calculateAge(userProfile.birthday!)} ${l10n.yearsOld}',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.035,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
-                    // Quick Actions
+  Widget _buildInfoItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.04),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: screenWidth * 0.06),
+          SizedBox(height: screenHeight * 0.01),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: screenWidth * 0.03,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
+          ),
+          SizedBox(height: screenHeight * 0.005),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: screenWidth * 0.038,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhysicalStatsCard(AppLocalizations l10n, UserProfile userProfile) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.05),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(screenWidth * 0.04),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.028),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.deepOrange.shade400,
+                      Colors.deepOrange.shade600,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.deepOrange.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.analytics_outlined,
+                  color: Colors.white,
+                  size: screenWidth * 0.055,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.035),
+              Text(
+                "Body Metrics",
+                style: TextStyle(
+                  fontSize: screenWidth * 0.045,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: screenHeight * 0.025),
+
+          // Gender and Date of Birth Row
+          Row(
+            children: [
+              // Gender
+              Expanded(
+                child: _buildStatCard(
+                  icon: userProfile.gender?.toLowerCase() == 'male'
+                      ? Icons.male
+                      : userProfile.gender?.toLowerCase() == 'female'
+                          ? Icons.female
+                          : Icons.person_outline,
+                  label: l10n.gender,
+                  value: userProfile.gender != null 
+                      ? _capitalizeFirst(userProfile.gender!) 
+                      : l10n.notSet,
+                  color: Colors.blue,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.03),
+              // Date of Birth
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.cake_outlined,
+                  label: l10n.dateOfBirth,
+                  value: userProfile.birthday != null
+                      ? _formatDate(userProfile.birthday!)
+                      : l10n.notSet,
+                  color: Colors.pink,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: screenHeight * 0.02),
+
+          // Weight and Height Row
+          Row(
+            children: [
+              // Weight
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.monitor_weight_outlined,
+                  label: l10n.weight,
+                  value: userProfile.weight != null
+                      ? '${userProfile.weight!.toStringAsFixed(1)} kg'
+                      : l10n.notSet,
+                  color: Colors.orange,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.03),
+              // Height
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.height_outlined,
+                  label: l10n.height,
+                  value: userProfile.height != null
+                      ? '${userProfile.height!.toStringAsFixed(0)} cm'
+                      : l10n.notSet,
+                  color: Colors.teal,
+                ),
+              ),
+            ],
+          ),
+
+          // Age and BMI Row at the bottom
+          SizedBox(height: screenHeight * 0.02),
+          Row(
+            children: [
+              // Age
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.calendar_today_outlined,
+                  label: "Age",
+                  value: userProfile.birthday != null
+                      ? '${_calculateAge(userProfile.birthday!)} ${l10n.yearsOld}'
+                      : l10n.notSet,
+                  color: Colors.purple,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.03),
+              // BMI
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.accessibility_new,
+                  label: l10n.bmiLabel,
+                  value: userProfile.bmi != null
+                      ? userProfile.bmi!.toStringAsFixed(1)
+                      : l10n.notSet,
+                  color: _getBmiColor(userProfile.bmi),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.025,
+        vertical: screenHeight * 0.015,
+      ),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: screenWidth * 0.06),
+          SizedBox(height: screenHeight * 0.008),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: screenWidth * 0.038,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: screenHeight * 0.003),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: screenWidth * 0.028,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMembershipCard(AppLocalizations l10n, UserProfile userProfile) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.05),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(screenWidth * 0.04),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.028),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.teal.shade400,
+                      Colors.teal.shade600,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.teal.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.workspace_premium_rounded,
+                  color: Colors.white,
+                  size: screenWidth * 0.055,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.035),
+              Text(
+                l10n.membershipDetails,
+                style: TextStyle(
+                  fontSize: screenWidth * 0.045,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: screenHeight * 0.02),
+
+          // Membership Info
+          _buildMembershipRow(
+            icon: Icons.badge_outlined,
+            label: l10n.clubCode,
+            value: userProfile.gymCode ?? l10n.notSet,
+          ),
+          if (userProfile.joinDate != null)
+            _buildMembershipRow(
+              icon: Icons.event_outlined,
+              label: l10n.joinDate,
+              value: _formatDate(userProfile.joinDate!),
+            ),
+          if (userProfile.membershipStartDate != null)
+            _buildMembershipRow(
+              icon: Icons.play_circle_outline,
+              label: l10n.startDate,
+              value: _formatDate(userProfile.membershipStartDate!),
+            ),
+          if (userProfile.membershipEndDate != null)
+            _buildMembershipRow(
+              icon: Icons.stop_circle_outlined,
+              label: l10n.endDate,
+              value: _formatDate(userProfile.membershipEndDate!),
+            ),
+          if (userProfile.membershipDuration != null)
+            _buildMembershipRow(
+              icon: Icons.timer_outlined,
+              label: l10n.duration,
+              value: l10n.months(userProfile.membershipDuration!),
+            ),
+          if (userProfile.membershipFees != null)
+            _buildMembershipRow(
+              icon: Icons.currency_rupee_outlined,
+              label: l10n.fees,
+              value: '₹${userProfile.membershipFees!.toStringAsFixed(0)}',
+              isLast: true,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMembershipRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    bool isLast = false,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: screenHeight * 0.012),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+                ),
+              ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: screenWidth * 0.045,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+          ),
+          SizedBox(width: screenWidth * 0.03),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: screenWidth * 0.035,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: screenWidth * 0.035,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard(AppLocalizations l10n) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.05),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(screenWidth * 0.04),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.028),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.purple.shade400,
+                      Colors.purple.shade600,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.purple.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.tune_rounded,
+                  color: Colors.white,
+                  size: screenWidth * 0.055,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.035),
+              Text(
+                l10n.settings,
+                style: TextStyle(
+                  fontSize: screenWidth * 0.045,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: screenHeight * 0.02),
+
+          // Language Selector
+          Consumer<LocaleProvider>(
+            builder: (context, localeProvider, child) {
+              String currentLang;
+              if (localeProvider.locale.languageCode == 'en') {
+                currentLang = l10n.english;
+              } else if (localeProvider.locale.languageCode == 'hi') {
+                currentLang = l10n.hindi;
+              } else {
+                currentLang = l10n.marathi;
+              }
+              return _buildSettingsTile(
+                icon: Icons.language_outlined,
+                iconColor: Colors.blue,
+                label: l10n.language,
+                value: currentLang,
+                onTap: () => _showLanguageBottomSheet(l10n, localeProvider),
+              );
+            },
+          ),
+
+          SizedBox(height: screenHeight * 0.012),
+
+          // Theme Selector
+          Consumer<ThemeProvider>(
+            builder: (context, themeProvider, child) {
+              final currentTheme = themeProvider.allThemeOptions(l10n)
+                  .firstWhere((o) => o.mode == themeProvider.themeMode);
+              return _buildSettingsTile(
+                icon: Icons.palette_outlined,
+                iconColor: Colors.orange,
+                label: l10n.theme,
+                value: currentTheme.title,
+                trailing: Icon(
+                  currentTheme.icon,
+                  size: screenWidth * 0.045,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                onTap: () => _showThemeBottomSheet(l10n, themeProvider),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsTile({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    Widget? trailing,
+    required VoidCallback onTap,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: screenWidth * 0.035,
+            vertical: screenHeight * 0.015,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.02),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                ),
+                child: Icon(
+                  icon,
+                  size: screenWidth * 0.05,
+                  color: iconColor,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.03),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      l10n.quickActions,
+                      label,
                       style: TextStyle(
-                        fontSize: screenWidth * 0.05,
-                        fontWeight: FontWeight.bold,
+                        fontSize: screenWidth * 0.032,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.003),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.038,
+                        fontWeight: FontWeight.w600,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
-
-                    const SizedBox(height: 16),
-
-                    // Row(
-                    //   children: [
-                    //     Expanded(
-                    //       child: _buildActionCard(
-                    //         'Goals',
-                    //         Icons.flag_outlined,
-                    //         Colors.blue,
-                    //         () => _navigateToGoals(),
-                    //       ),
-                    //     ),
-                    //     const SizedBox(width: 16),
-                    //     Expanded(
-                    //       child: _buildActionCard(
-                    //         'Progress',
-                    //         Icons.trending_up_outlined,
-                    //         Colors.purple,
-                    //         () => _navigateToProgress(),
-                    //       ),
-                    //     ),
-                    //   ],
-                    // ),
-
-                    // const SizedBox(height: 16),
-
-                    // Row(
-                    //   children: [
-                    //     Expanded(
-                    //       child: _buildActionCard(
-                    //         'Achievements',
-                    //         Icons.emoji_events_outlined,
-                    //         Colors.orange,
-                    //         () => _navigateToAchievements(),
-                    //       ),
-                    //     ),
-                    //     const SizedBox(width: 16),
-                    //     Expanded(
-                    //       child: _buildActionCard(
-                    //         'History',
-                    //         Icons.history_outlined,
-                    //         Colors.green,
-                    //         () => _navigateToHistory(),
-                    //       ),
-                    //     ),
-                    //   ],
-                    // ),
-
-                    //const SizedBox(height: 25),
-
-                    // Settings Section
-                    //_buildSettingsSection(),
-
-                    //SizedBox(height: screenHeight * 0.02),
-
-                    // Language Selection
-                    _buildLanguageSelector(),
-                    SizedBox(height: cardSpacing),
-
-                    // Theme Selection
-                    _buildThemeSelector(),
-                    SizedBox(height: cardSpacing),
-
-                    _buildDeleteAccountButton(),
-
-                    SizedBox(height: cardSpacing),
-
-                    // Logout Button
-                    _buildLogoutButton(),
                   ],
                 ),
               ),
-            );
-          },
+              if (trailing != null) ...[
+                trailing,
+                SizedBox(width: screenWidth * 0.02),
+              ],
+              Icon(
+                Icons.chevron_right,
+                size: screenWidth * 0.055,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _showLanguageBottomSheet(AppLocalizations l10n, LocaleProvider localeProvider) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(screenWidth * 0.06),
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.05,
+                vertical: screenHeight * 0.02,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle bar
+                  Container(
+                    width: screenWidth * 0.1,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.025),
+                  
+                  // Title
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(screenWidth * 0.025),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                        ),
+                        child: Icon(
+                          Icons.language_outlined,
+                          color: Colors.blue,
+                          size: screenWidth * 0.055,
+                        ),
+                      ),
+                      SizedBox(width: screenWidth * 0.03),
+                      Text(
+                        l10n.language,
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.05,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: screenHeight * 0.025),
+                  
+                  // Language options
+                  _buildLanguageOption(
+                    flag: '🇺🇸',
+                    title: l10n.english,
+                    subtitle: 'English',
+                    isSelected: localeProvider.locale.languageCode == 'en',
+                    onTap: () {
+                      localeProvider.setLocale(const Locale('en'));
+                      Navigator.pop(context);
+                    },
+                  ),
+                  SizedBox(height: screenHeight * 0.012),
+                  _buildLanguageOption(
+                    flag: '🇮🇳',
+                    title: l10n.hindi,
+                    subtitle: 'हिंदी',
+                    isSelected: localeProvider.locale.languageCode == 'hi',
+                    onTap: () {
+                      localeProvider.setLocale(const Locale('hi'));
+                      Navigator.pop(context);
+                    },
+                  ),
+                  SizedBox(height: screenHeight * 0.012),
+                  _buildLanguageOption(
+                    flag: '🇮🇳',
+                    title: l10n.marathi,
+                    subtitle: 'मराठी',
+                    isSelected: localeProvider.locale.languageCode == 'mr',
+                    onTap: () {
+                      localeProvider.setLocale(const Locale('mr'));
+                      Navigator.pop(context);
+                    },
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLanguageOption({
+    required String flag,
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(screenWidth * 0.035),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: EdgeInsets.symmetric(
+            horizontal: screenWidth * 0.04,
+            vertical: screenHeight * 0.018,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5)
+                : Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(screenWidth * 0.035),
+            border: Border.all(
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Text(
+                flag,
+                style: TextStyle(fontSize: screenWidth * 0.08),
+              ),
+              SizedBox(width: screenWidth * 0.04),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.042,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.032,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: screenWidth * 0.06,
+                height: screenWidth * 0.06,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                ),
+                child: isSelected
+                    ? Icon(
+                        Icons.check,
+                        size: screenWidth * 0.04,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showThemeBottomSheet(AppLocalizations l10n, ThemeProvider themeProvider) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(screenWidth * 0.06),
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.05,
+                vertical: screenHeight * 0.02,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle bar
+                  Container(
+                    width: screenWidth * 0.1,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.025),
+                  
+                  // Title
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(screenWidth * 0.025),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                        ),
+                        child: Icon(
+                          Icons.palette_outlined,
+                          color: Colors.orange,
+                          size: screenWidth * 0.055,
+                        ),
+                      ),
+                      SizedBox(width: screenWidth * 0.03),
+                      Text(
+                        l10n.theme,
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.05,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: screenHeight * 0.025),
+                  
+                  // Theme options
+                  ...themeProvider.allThemeOptions(l10n).map((option) {
+                    final isSelected = themeProvider.themeMode == option.mode;
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: screenHeight * 0.012),
+                      child: _buildThemeOption(
+                        icon: option.icon,
+                        title: option.title,
+                        subtitle: _getThemeSubtitle(option.mode, l10n),
+                        color: _getThemeColor(option.mode),
+                        isSelected: isSelected,
+                        onTap: () {
+                          themeProvider.setThemeMode(option.mode);
+                          Navigator.pop(context);
+                        },
+                      ),
+                    );
+                  }),
+                  SizedBox(height: screenHeight * 0.01),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _getThemeSubtitle(ThemeMode mode, AppLocalizations l10n) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Bright and clean appearance';
+      case ThemeMode.dark:
+        return 'Easy on the eyes at night';
+      case ThemeMode.system:
+        return 'Follows your device settings';
+    }
+  }
+
+  Color _getThemeColor(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return Colors.amber;
+      case ThemeMode.dark:
+        return Colors.indigo;
+      case ThemeMode.system:
+        return Colors.teal;
+    }
+  }
+
+  Widget _buildThemeOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(screenWidth * 0.035),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: EdgeInsets.symmetric(
+            horizontal: screenWidth * 0.04,
+            vertical: screenHeight * 0.018,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5)
+                : Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(screenWidth * 0.035),
+            border: Border.all(
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.025),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                ),
+                child: Icon(
+                  icon,
+                  size: screenWidth * 0.06,
+                  color: color,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.04),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.042,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.03,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: screenWidth * 0.06,
+                height: screenWidth * 0.06,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                ),
+                child: isSelected
+                    ? Icon(
+                        Icons.check,
+                        size: screenWidth * 0.04,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountActionsCard(AppLocalizations l10n) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Column(
+      children: [
+        // Delete Account Button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _showDeleteAccountDialog(),
+            icon: Icon(
+              Icons.delete_outline,
+              size: screenWidth * 0.05,
+            ),
+            label: Text(
+              l10n.deleteAccount,
+              style: TextStyle(fontSize: screenWidth * 0.038),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.error.withOpacity(0.5),
+              ),
+              padding: EdgeInsets.symmetric(vertical: screenHeight * 0.018),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(screenWidth * 0.03),
+              ),
+            ),
+          ),
+        ),
+
+        SizedBox(height: screenHeight * 0.015),
+
+        // Logout Button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _isLoggingOut ? null : () => _showLogoutDialog(),
+            icon: _isLoggingOut
+                ? SizedBox(
+                    width: screenWidth * 0.04,
+                    height: screenWidth * 0.04,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Theme.of(context).colorScheme.onError,
+                    ),
+                  )
+                : Icon(Icons.logout, size: screenWidth * 0.05),
+            label: Text(
+              l10n.signOut,
+              style: TextStyle(fontSize: screenWidth * 0.038),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+              padding: EdgeInsets.symmetric(vertical: screenHeight * 0.018),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(screenWidth * 0.03),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -259,10 +1489,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: EdgeInsets.all(screenWidth * 0.06),
               decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .errorContainer
-                    .withOpacity(0.3),
+                color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.3),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -295,18 +1522,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 context.read<ProfileProvider>().refreshProfile();
               },
               icon: Icon(Icons.refresh, size: screenWidth * 0.04),
-              label: Text(l10n.tryAgain,
-                  style: TextStyle(fontSize: screenWidth * 0.04)),
+              label: Text(l10n.tryAgain),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenWidth * 0.06,
-                  vertical: screenHeight * 0.015,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(screenWidth * 0.06),
-                ),
               ),
             ),
           ],
@@ -361,18 +1580,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 context.read<ProfileProvider>().refreshProfile();
               },
               icon: Icon(Icons.refresh, size: screenWidth * 0.04),
-              label: Text(l10n.refresh,
-                  style: TextStyle(fontSize: screenWidth * 0.04)),
+              label: Text(l10n.refresh),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenWidth * 0.06,
-                  vertical: screenHeight * 0.015,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(screenWidth * 0.06),
-                ),
               ),
             ),
           ],
@@ -381,1005 +1592,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileCard(AppLocalizations l10n, UserProfile userProfile) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
+  Widget _buildDefaultAvatar(double screenWidth) {
     return Container(
-      padding: EdgeInsets.all(screenWidth * 0.06),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(screenWidth * 0.05),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-            blurRadius: screenWidth * 0.04,
-            offset: Offset(0, screenWidth * 0.01),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Profile Picture and Basic Info
-          Row(
-            children: [
-              // Profile Picture
-              Container(
-                width: screenWidth * 0.2,
-                height: screenWidth * 0.2,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withOpacity(0.4),
-                      blurRadius: screenWidth * 0.04,
-                      offset: Offset(0, screenWidth * 0.02),
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: userProfile.profileImageUrl != null
-                      ? Image.network(
-                          userProfile.profileImageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return _buildDefaultAvatar(screenWidth);
-                          },
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return _buildLoadingAvatar(screenWidth);
-                          },
-                        )
-                      : _buildDefaultAvatar(screenWidth),
-                ),
-              ),
-
-              SizedBox(width: screenWidth * 0.05),
-
-              // User Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      userProfile.name,
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.055,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    SizedBox(height: screenHeight * 0.005),
-                    Text(
-                      userProfile.phone,
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.035,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.6),
-                      ),
-                    ),
-                    SizedBox(height: screenHeight * 0.01),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: screenWidth * 0.03,
-                        vertical: screenHeight * 0.005,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer
-                            .withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                        border: Border.all(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        l10n.member,
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.03,
-                          color:
-                              Theme.of(context).colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: screenHeight * 0.025),
-
-          // Weight and Height Row
-          Row(
-            children: [
-              // Weight Container
-              Expanded(
-                child: Container(
-                  padding: EdgeInsets.all(screenWidth * 0.04),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .tertiaryContainer
-                        .withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .tertiary
-                            .withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.monitor_weight_outlined,
-                        color: Theme.of(context).colorScheme.tertiary,
-                        size: screenWidth * 0.06,
-                      ),
-                      SizedBox(height: screenHeight * 0.01),
-                      Text(
-                        userProfile.weight != null
-                            ? '${userProfile.weight!.toStringAsFixed(1)} kg'
-                            : l10n.notSet,
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.04,
-                          fontWeight: FontWeight.bold,
-                          color: userProfile.weight != null
-                              ? Theme.of(context)
-                                  .colorScheme
-                                  .onTertiaryContainer
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.6),
-                        ),
-                      ),
-                      SizedBox(height: screenHeight * 0.005),
-                      Text(
-                        l10n.weight,
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.03,
-                          color: Theme.of(context).colorScheme.tertiary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              SizedBox(width: screenWidth * 0.04),
-
-              // Height Container
-              Expanded(
-                child: Container(
-                  padding: EdgeInsets.all(screenWidth * 0.04),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .secondaryContainer
-                        .withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .secondary
-                            .withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.height_outlined,
-                        color: Theme.of(context).colorScheme.secondary,
-                        size: screenWidth * 0.06,
-                      ),
-                      SizedBox(height: screenHeight * 0.01),
-                      Text(
-                        userProfile.height != null
-                            ? '${userProfile.height!.toStringAsFixed(0)} cm'
-                            : l10n.notSet,
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.04,
-                          fontWeight: FontWeight.bold,
-                          color: userProfile.height != null
-                              ? Theme.of(context)
-                                  .colorScheme
-                                  .onSecondaryContainer
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.6),
-                        ),
-                      ),
-                      SizedBox(height: screenHeight * 0.005),
-                      Text(
-                        l10n.height,
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.03,
-                          color: Theme.of(context).colorScheme.secondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: screenHeight * 0.025),
-
-          // DOB and Gender Row
-          Row(
-            children: [
-              // DOB Container
-              Expanded(
-                child: Container(
-                  padding: EdgeInsets.all(screenWidth * 0.04),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primaryContainer
-                        .withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: screenWidth * 0.06,
-                      ),
-                      SizedBox(height: screenHeight * 0.01),
-                      Text(
-                        userProfile.birthday != null
-                            ? '${userProfile.birthday!.day}/${userProfile.birthday!.month}/${userProfile.birthday!.year}'
-                            : l10n.notSet,
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.04,
-                          fontWeight: FontWeight.bold,
-                          color: userProfile.birthday != null
-                              ? Theme.of(context)
-                                  .colorScheme
-                                  .onPrimaryContainer
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.6),
-                        ),
-                      ),
-                      SizedBox(height: screenHeight * 0.005),
-                      Text(
-                        'Date of Birth',
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.03,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              SizedBox(width: screenWidth * 0.04),
-
-              // Gender Container
-              Expanded(
-                child: Container(
-                  padding: EdgeInsets.all(screenWidth * 0.04),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .secondaryContainer
-                        .withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .secondary
-                            .withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        userProfile.gender?.toLowerCase() == 'male' || userProfile.gender?.toLowerCase() == 'm'
-                            ? Icons.male
-                            : userProfile.gender?.toLowerCase() == 'female' || userProfile.gender?.toLowerCase() == 'f'
-                                ? Icons.female
-                                : Icons.person_outline,
-                        color: Theme.of(context).colorScheme.secondary,
-                        size: screenWidth * 0.06,
-                      ),
-                      SizedBox(height: screenHeight * 0.01),
-                      Text(
-                        userProfile.gender ?? l10n.notSet,
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.04,
-                          fontWeight: FontWeight.bold,
-                          color: userProfile.gender != null
-                              ? Theme.of(context)
-                                  .colorScheme
-                                  .onSecondaryContainer
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.6),
-                        ),
-                      ),
-                      SizedBox(height: screenHeight * 0.005),
-                      Text(
-                        'Gender',
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.03,
-                          color: Theme.of(context).colorScheme.secondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // BMI Display (if both weight and height are available)
-          if (userProfile.weight != null && userProfile.height != null) ...[
-            SizedBox(height: screenHeight * 0.02),
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(screenWidth * 0.04),
-              decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primaryContainer
-                    .withOpacity(0.3),
-                borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                border: Border.all(
-                    color:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.3)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.favorite_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: screenWidth * 0.05,
-                      ),
-                      SizedBox(width: screenWidth * 0.02),
-                      Text(
-                        '${l10n.bmiLabel}: ${userProfile.bmi!.toStringAsFixed(1)}',
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.04,
-                          fontWeight: FontWeight.bold,
-                          color:
-                              Theme.of(context).colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: screenHeight * 0.005),
-                  Text(
-                    userProfile.bmiCategory!,
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.03,
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).colorScheme.primary.withOpacity(0.8),
+            Theme.of(context).colorScheme.tertiary.withOpacity(0.8),
           ],
-        ],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          _getInitials(_userProfile?.name ?? 'User'),
+          style: TextStyle(
+            fontSize: screenWidth * 0.1,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildMembershipCard(AppLocalizations l10n, UserProfile userProfile) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
+  Widget _buildLoadingAvatar(double screenWidth) {
     return Container(
-      padding: EdgeInsets.all(screenWidth * 0.05),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(screenWidth * 0.04),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-            blurRadius: screenWidth * 0.025,
-            offset: Offset(0, screenWidth * 0.005),
-          ),
-        ],
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.membershipDetails,
-            style: TextStyle(
-              fontSize: screenWidth * 0.045,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+      child: Center(
+        child: SizedBox(
+          width: screenWidth * 0.08,
+          height: screenWidth * 0.08,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: Theme.of(context).colorScheme.primary,
           ),
-          SizedBox(height: screenHeight * 0.02),
-          if (userProfile.gymCode != null) ...[
-            _buildInfoRow(l10n.clubCode, userProfile.gymCode!),
-            SizedBox(height: screenHeight * 0.015),
-          ],
-          if (userProfile.joinDate != null) ...[
-            _buildInfoRow(l10n.joinDate, _formatDate(userProfile.joinDate!)),
-            SizedBox(height: screenHeight * 0.015),
-          ],
-          if (userProfile.membershipStartDate != null) ...[
-            _buildInfoRow(
-                l10n.startDate, _formatDate(userProfile.membershipStartDate!)),
-            SizedBox(height: screenHeight * 0.015),
-          ],
-          if (userProfile.membershipEndDate != null) ...[
-            _buildInfoRow(
-                l10n.endDate, _formatDate(userProfile.membershipEndDate!)),
-            SizedBox(height: screenHeight * 0.015),
-          ],
-          if (userProfile.membershipDuration != null) ...[
-            _buildInfoRow(l10n.duration,
-                l10n.months(userProfile.membershipDuration!)),
-            SizedBox(height: screenHeight * 0.015),
-          ],
-          if (userProfile.membershipFees != null) ...[
-            _buildInfoRow(l10n.fees,
-                '₹${userProfile.membershipFees!.toStringAsFixed(0)}'),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: screenWidth * 0.25,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: screenWidth * 0.035,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        //const Text(': ', style: TextStyle(color: Colors.grey)),
-        Expanded(
-          child: Align(
-            alignment: Alignment.topRight,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: screenWidth * 0.035,
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSettingsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Settings',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              _buildSettingsItem(
-                'Notifications',
-                Icons.notifications_outlined,
-                isSwitch: true,
-                switchValue: _notificationsEnabled,
-                onSwitchChanged: (value) {
-                  setState(() {
-                    _notificationsEnabled = value;
-                  });
-                },
-              ),
-              _buildSettingsDivider(),
-              _buildSettingsItem(
-                'Dark Mode',
-                Icons.dark_mode_outlined,
-                isSwitch: true,
-                switchValue: _darkModeEnabled,
-                onSwitchChanged: (value) {
-                  setState(() {
-                    _darkModeEnabled = value;
-                  });
-                },
-              ),
-              _buildSettingsDivider(),
-              _buildSettingsItem(
-                'Biometric Login',
-                Icons.fingerprint_outlined,
-                isSwitch: true,
-                switchValue: _biometricEnabled,
-                onSwitchChanged: (value) {
-                  setState(() {
-                    _biometricEnabled = value;
-                  });
-                },
-              ),
-              _buildSettingsDivider(),
-              _buildSettingsItem(
-                'Privacy & Security',
-                Icons.security_outlined,
-                onTap: () => _navigateToPrivacy(),
-              ),
-              _buildSettingsDivider(),
-              _buildSettingsItem(
-                'Data & Storage',
-                Icons.storage_outlined,
-                onTap: () => _navigateToDataStorage(),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSupportSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Support',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              _buildSettingsItem(
-                'Help & Support',
-                Icons.help_outline,
-                onTap: () => _navigateToHelp(),
-              ),
-              _buildSettingsDivider(),
-              _buildSettingsItem(
-                'Rate App',
-                Icons.star_outline,
-                onTap: () => _rateApp(),
-              ),
-              _buildSettingsDivider(),
-              _buildSettingsItem(
-                'About',
-                Icons.info_outline,
-                onTap: () => _showAboutDialog(),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLanguageSelector() {
-    final l10n = AppLocalizations.of(context)!;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return Consumer<LocaleProvider>(
-      builder: (context, localeProvider, child) {
-        return Container(
-          padding: EdgeInsets.all(screenWidth * 0.05),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(screenWidth * 0.04),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-                blurRadius: screenWidth * 0.025,
-                offset: Offset(0, screenWidth * 0.005),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.language_rounded,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: screenWidth * 0.06,
-                  ),
-                  SizedBox(width: screenWidth * 0.03),
-                  Text(
-                    l10n.language,
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.045,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: screenHeight * 0.015),
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenWidth * 0.04,
-                  vertical: screenHeight * 0.008,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainer,
-                  borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                  border: Border.all(
-                    color:
-                        Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                  ),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: localeProvider.locale.languageCode,
-                    isExpanded: true,
-                    icon: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.04,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    dropdownColor: Theme.of(context).colorScheme.surface,
-                    items: [
-                      DropdownMenuItem<String>(
-                        value: 'en',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.flag_circle,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: screenWidth * 0.05,
-                            ),
-                            SizedBox(width: screenWidth * 0.03),
-                            Expanded(
-                              child: Text(
-                                l10n.english,
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.04,
-                                  color:
-                                      Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      DropdownMenuItem<String>(
-                        value: 'hi',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.flag_circle,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: screenWidth * 0.05,
-                            ),
-                            SizedBox(width: screenWidth * 0.03),
-                            Expanded(
-                              child: Text(
-                                l10n.hindi,
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.04,
-                                  color:
-                                      Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    onChanged: (String? newLanguageCode) async {
-                      if (newLanguageCode != null) {
-                        await localeProvider.setLocale(Locale(newLanguageCode));
-                        // Snackbar removed - no longer showing language change messages
-                      }
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildThemeSelector() {
-    final l10n = AppLocalizations.of(context)!;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
-        return Container(
-          padding: EdgeInsets.all(screenWidth * 0.05),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(screenWidth * 0.04),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-                blurRadius: screenWidth * 0.025,
-                offset: Offset(0, screenWidth * 0.005),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    themeProvider.themeModeIcon,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: screenWidth * 0.06,
-                  ),
-                  SizedBox(width: screenWidth * 0.03),
-                  Text(
-                    l10n.theme,
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.045,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: screenHeight * 0.015),
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenWidth * 0.04,
-                  vertical: screenHeight * 0.008,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainer,
-                  borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                  border: Border.all(
-                    color:
-                        Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                  ),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<ThemeMode>(
-                    value: themeProvider.themeMode,
-                    isExpanded: true,
-                    icon: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.04,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    dropdownColor: Theme.of(context).colorScheme.surface,
-                    items: themeProvider.allThemeOptions(l10n).map((option) {
-                      return DropdownMenuItem<ThemeMode>(
-                        value: option.mode,
-                        child: Row(
-                          children: [
-                            Icon(
-                              option.icon,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: screenWidth * 0.05,
-                            ),
-                            SizedBox(width: screenWidth * 0.03),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    option.title,
-                                    style: TextStyle(
-                                      fontSize: screenWidth * 0.04,
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface,
-                                    ),
-                                  ),
-                                  Text(
-                                    option.subtitle,
-                                    style: TextStyle(
-                                      fontSize: screenWidth * 0.032,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (ThemeMode? newMode) {
-                      if (newMode != null) {
-                        themeProvider.setThemeMode(newMode);
-                        // Snackbar removed - no longer showing theme change messages
-                      }
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildLogoutButton() {
-    final l10n = AppLocalizations.of(context)!;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return SizedBox(
-      width: double.infinity,
-      height: screenHeight * 0.06,
-      child: ElevatedButton(
-        onPressed: _isLoggingOut ? null : () => _showLogoutDialog(),
-        style: ElevatedButton.styleFrom(
-          backgroundColor:
-              Theme.of(context).colorScheme.errorContainer.withOpacity(0.5),
-          foregroundColor: Theme.of(context).colorScheme.error,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(screenWidth * 0.04),
-            side: BorderSide(
-                color: Theme.of(context).colorScheme.error.withOpacity(0.3)),
-          ),
-          disabledBackgroundColor:
-              Theme.of(context).colorScheme.surfaceContainer,
-        ),
-        child: _isLoggingOut
-            ? SizedBox(
-                width: screenWidth * 0.05,
-                height: screenWidth * 0.05,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.logout_outlined,
-                      color: Theme.of(context).colorScheme.error,
-                      size: screenWidth * 0.05),
-                  SizedBox(width: screenWidth * 0.02),
-                  Text(
-                    l10n.signOut,
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.04,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-
-  Widget _buildDeleteAccountButton() {
-    final l10n = AppLocalizations.of(context)!;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return SizedBox(
-      width: double.infinity,
-      height: screenHeight * 0.06,
-      child: ElevatedButton(
-        onPressed: () => _showDeleteAccountDialog(),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.1),
-          foregroundColor: Theme.of(context).colorScheme.error,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(screenWidth * 0.04),
-            side: BorderSide(
-                color: Theme.of(context).colorScheme.error.withOpacity(0.3)),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.delete_forever_outlined,
-                color: Theme.of(context).colorScheme.error,
-                size: screenWidth * 0.05),
-            SizedBox(width: screenWidth * 0.02),
-            Text(
-              l10n.deleteAccount,
-              style: TextStyle(
-                fontSize: screenWidth * 0.04,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.error,
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+  // Helper methods
+  UserProfile? get _userProfile => context.read<ProfileProvider>().userProfile;
+
+  /// Capitalizes the first letter of a string (e.g., "male" -> "Male")
+  String _capitalizeFirst(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1).toLowerCase();
   }
 
-  // Helper method to get user initials
+  /// Converts a string to title case (e.g., "john doe" -> "John Doe")
+  String _toTitleCase(String text) {
+    if (text.isEmpty) return text;
+    return text.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
   String _getInitials(String name) {
     if (name.isEmpty) return 'U';
     final parts = name.split(' ');
@@ -1389,179 +1662,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
-  // Helper method to build default avatar
-  Widget _buildDefaultAvatar(double screenWidth) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Theme.of(context).colorScheme.primary.withOpacity(0.8),
-            Theme.of(context).colorScheme.primary,
-          ],
-        ),
-      ),
-      child: Center(
-        child: Text(
-          _getInitials(_userProfile?.name ?? 'User'),
-          style: TextStyle(
-            fontSize: screenWidth * 0.07,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onPrimary,
-          ),
-        ),
-      ),
-    );
+  String _formatDate(DateTime date) {
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  // Helper method to build loading avatar
-  Widget _buildLoadingAvatar(double screenWidth) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Theme.of(context).colorScheme.surfaceContainer,
-      ),
-      child: Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-      ),
-    );
+  int _calculateAge(DateTime birthday) {
+    final now = DateTime.now();
+    int age = now.year - birthday.year;
+    if (now.month < birthday.month ||
+        (now.month == birthday.month && now.day < birthday.day)) {
+      age--;
+    }
+    return age;
   }
 
-  // Add reference to _userProfile for helper methods
-  UserProfile? get _userProfile => context.read<ProfileProvider>().userProfile;
-
-  Widget _buildActionCard(
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  Color _getBmiColor(double? bmi) {
+    if (bmi == null) return Colors.grey;
+    if (bmi < 18.5) return Colors.blue;
+    if (bmi < 25) return Colors.green;
+    if (bmi < 30) return Colors.orange;
+    return Colors.red;
   }
 
-  Widget _buildSettingsItem(
-    String title,
-    IconData icon, {
-    bool isSwitch = false,
-    bool switchValue = false,
-    Function(bool)? onSwitchChanged,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: Colors.grey[600], size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            if (isSwitch)
-              Switch(
-                value: switchValue,
-                onChanged: onSwitchChanged,
-                activeColor: Colors.green,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              )
-            else
-              Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingsDivider() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      height: 1,
-      color: Colors.grey[100],
-    );
-  }
-
-  void _showEditProfileDialog() {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            l10n.editProfile,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: Text(
-            l10n.profileEditingSoon,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(l10n.ok, style: TextStyle(color: Colors.green[600])),
-            ),
-          ],
-        );
-      },
-    );
+  IconData _getBmiIcon(String? category) {
+    if (category == null) return Icons.info_outline;
+    switch (category.toLowerCase()) {
+      case 'underweight':
+        return Icons.trending_down;
+      case 'normal weight':
+        return Icons.check_circle_outline;
+      case 'overweight':
+        return Icons.trending_up;
+      case 'obese':
+        return Icons.warning_outlined;
+      default:
+        return Icons.info_outline;
+    }
   }
 
   void _showLogoutDialog() {
@@ -1573,30 +1713,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(screenWidth * 0.05),
+            borderRadius: BorderRadius.circular(screenWidth * 0.04),
           ),
           title: Text(
             l10n.signOut,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: screenWidth * 0.045,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          content: Text(
-            l10n.areYouSureSignOut,
-            style: TextStyle(fontSize: screenWidth * 0.04),
-          ),
+          content: Text(l10n.areYouSureSignOut),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                l10n.cancel,
-                style: TextStyle(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  fontSize: screenWidth * 0.04,
-                ),
-              ),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () {
@@ -1605,10 +1732,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
               child: Text(
                 l10n.signOut,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                  fontSize: screenWidth * 0.04,
-                ),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
           ],
@@ -1626,22 +1750,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(screenWidth * 0.05),
+            borderRadius: BorderRadius.circular(screenWidth * 0.04),
           ),
           title: Row(
             children: [
               Icon(
                 Icons.warning_amber_rounded,
                 color: Theme.of(context).colorScheme.error,
-                size: screenWidth * 0.06,
               ),
-              SizedBox(width: screenWidth * 0.03),
+              SizedBox(width: screenWidth * 0.02),
               Text(
                 l10n.deleteAccount,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: screenWidth * 0.045,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -1649,25 +1769,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                l10n.deleteAccountConfirm,
-                style: TextStyle(
-                  fontSize: screenWidth * 0.04,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              Text(l10n.deleteAccountConfirm),
               SizedBox(height: screenWidth * 0.03),
               Container(
-                padding: EdgeInsets.all(screenWidth * 0.04),
+                padding: EdgeInsets.all(screenWidth * 0.03),
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .errorContainer
-                      .withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.error.withOpacity(0.3),
-                  ),
+                  color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1675,18 +1783,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(
                       l10n.importantInformation,
                       style: TextStyle(
-                        fontSize: screenWidth * 0.035,
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
-                    SizedBox(height: screenWidth * 0.02),
+                    SizedBox(height: screenWidth * 0.01),
                     Text(
                       l10n.deleteAccountInfo,
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.035,
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                      ),
+                      style: TextStyle(fontSize: screenWidth * 0.035),
                     ),
                   ],
                 ),
@@ -1696,14 +1800,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                l10n.cancel,
-                style: TextStyle(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  fontSize: screenWidth * 0.04,
-                ),
-              ),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () {
@@ -1712,11 +1809,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
               child: Text(
                 l10n.continueToDelete,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                  fontSize: screenWidth * 0.04,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
           ],
@@ -1725,7 +1818,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Launch external website for account deletion
   Future<void> _launchDeleteAccountWebsite() async {
     final Uri deleteAccountUrl = Uri.parse(
         'https://mr-muscle-privacy-website.vercel.app/delete-account');
@@ -1736,89 +1828,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
           deleteAccountUrl,
           mode: LaunchMode.externalApplication,
         );
-
-        // Show success message
-        if (mounted) {
-          // ScaffoldMessenger.of(context).showSnackBar(
-          //   SnackBar(
-          //     content: Text('Redirected to account deletion page'),
-          //     backgroundColor: Theme.of(context).colorScheme.primary,
-          //     behavior: SnackBarBehavior.floating,
-          //     shape: RoundedRectangleBorder(
-          //       borderRadius: BorderRadius.circular(10),
-          //     ),
-          //   ),
-          // );
-        }
-      } else {
-        if (mounted) {
-          // ScaffoldMessenger.of(context).showSnackBar(
-          //   SnackBar(
-          //     content: Text('Unable to open the deletion page'),
-          //     backgroundColor: Theme.of(context).colorScheme.error,
-          //     behavior: SnackBarBehavior.floating,
-          //     shape: RoundedRectangleBorder(
-          //       borderRadius: BorderRadius.circular(10),
-          //     ),
-          //   ),
-          // );
-        }
       }
     } catch (e) {
-      if (mounted) {
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   SnackBar(
-        //     content: Text('Error opening deletion page: $e'),
-        //     backgroundColor: Theme.of(context).colorScheme.error,
-        //     behavior: SnackBarBehavior.floating,
-        //     shape: RoundedRectangleBorder(
-        //       borderRadius: BorderRadius.circular(10),
-        //     ),
-        //   ),
-        // );
-      }
+      debugPrint('Error opening deletion page: $e');
     }
   }
 
-  // Show logout confirmation dialog
-  // This method was removed as it was duplicated elsewhere
-
-  // Proper logout implementation
   Future<void> _handleLogout() async {
     setState(() {
       _isLoggingOut = true;
     });
 
     try {
-      // Clear all authentication data using ProfileService
       await ProfileService.signOut();
 
       if (mounted) {
-        // Snackbar removed - no longer showing logout success messages
-
-        // Reset login provider state to phone input
-        final loginProvider =
-            Provider.of<LoginProvider>(context, listen: false);
+        final loginProvider = Provider.of<LoginProvider>(context, listen: false);
         loginProvider.resetLoginState();
 
-        // Navigate to login screen and clear entire navigation stack
         Navigator.pushNamedAndRemoveUntil(
           context,
-          '/login', // Navigate to login screen
-          (route) => false, // Remove all routes from the stack
+          '/login',
+          (route) => false,
         );
       }
     } catch (e) {
-      // Even if sign out fails, still clear local data and navigate
       if (mounted) {
-        // Snackbar removed - no longer showing error messages
-
-        // Reset login provider state to phone input
-        final loginProvider =
-            Provider.of<LoginProvider>(context, listen: false);
+        final loginProvider = Provider.of<LoginProvider>(context, listen: false);
         loginProvider.resetLoginState();
 
-        // Still navigate to login screen
         Navigator.pushNamedAndRemoveUntil(
           context,
           '/login',
@@ -1832,193 +1870,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     }
-  }
-
-  void _showAboutDialog() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(screenWidth * 0.05),
-          ),
-          title: Text(
-            'About FitTracker',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: screenWidth * 0.045,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Version 1.0.0',
-                style: TextStyle(fontSize: screenWidth * 0.04),
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              Text(
-                'Your personal fitness companion for a healthier lifestyle.',
-                style: TextStyle(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  fontSize: screenWidth * 0.04,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'OK',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontSize: screenWidth * 0.04,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Navigation methods
-  void _navigateToGoals() {
-    // Snackbar removed - no longer showing coming soon messages
-  }
-
-  void _navigateToProgress() {
-    // Snackbar removed - no longer showing coming soon messages
-  }
-
-  void _navigateToAchievements() {
-    // Snackbar removed - no longer showing coming soon messages
-  }
-
-  void _navigateToHistory() {
-    // Snackbar removed - no longer showing coming soon messages
-  }
-
-  void _navigateToPrivacy() {
-    // Snackbar removed - no longer showing coming soon messages
-  }
-
-  void _navigateToDataStorage() {
-    // Snackbar removed - no longer showing coming soon messages
-  }
-
-  void _navigateToHelp() {
-    // Snackbar removed - no longer showing coming soon messages
-  }
-
-  void _rateApp() {
-    // Snackbar removed - no longer showing coming soon messages
-  }
-
-  void _showThemeChangeSnackBar(String themeName) {
-    // Snackbars removed - no longer showing theme change messages
-  }
-
-  void _showLanguageChangeSnackBar(String languageName) {
-    // Snackbars removed - no longer showing language change messages
-  }
-
-  void _showComingSoonSnackBar(String feature) {
-    // Snackbars removed - no longer showing coming soon messages
-  }
-
-  void _showSuccessSnackBar(String message) {
-    // Snackbars removed - no longer showing success messages
-  }
-
-  void _showErrorSnackBar(String message) {
-    // Snackbars removed - no longer showing error messages
-  }
-
-  Widget _buildSyncStatusIndicator(ProfileProvider profileProvider) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    // Choose appropriate icon and color based on sync status
-    IconData icon;
-    Color color;
-    String statusText = profileProvider.syncStatus;
-
-    if (profileProvider.isSyncing) {
-      icon = Icons.sync;
-      color = Theme.of(context).colorScheme.primary;
-    } else if (!profileProvider.isOnline) {
-      icon = Icons.cloud_off_outlined;
-      color = Theme.of(context).colorScheme.outline;
-    } else if (profileProvider.syncError != null) {
-      icon = Icons.sync_problem_outlined;
-      color = Theme.of(context).colorScheme.error;
-    } else if (profileProvider.lastSyncTime != null) {
-      icon = Icons.cloud_done_outlined;
-      color = Theme.of(context).colorScheme.primary;
-    } else {
-      icon = Icons.sync_outlined;
-      color = Theme.of(context).colorScheme.outline;
-    }
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.04,
-        vertical: screenWidth * 0.02,
-      ),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(screenWidth * 0.02),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (profileProvider.isSyncing)
-            SizedBox(
-              width: screenWidth * 0.04,
-              height: screenWidth * 0.04,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: color,
-              ),
-            )
-          else
-            Icon(
-              icon,
-              size: screenWidth * 0.04,
-              color: color,
-            ),
-          SizedBox(width: screenWidth * 0.02),
-          Text(
-            statusText,
-            style: TextStyle(
-              fontSize: screenWidth * 0.03,
-              color: color,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          if (profileProvider.isDataStale && profileProvider.isOnline) ...[
-            SizedBox(width: screenWidth * 0.02),
-            GestureDetector(
-              onTap: () => profileProvider.syncWithBackend(),
-              child: Icon(
-                Icons.refresh,
-                size: screenWidth * 0.04,
-                color: color,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
   }
 }

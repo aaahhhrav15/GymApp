@@ -296,7 +296,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 _selectedDate.day == DateTime.now().day &&
                         _selectedDate.month == DateTime.now().month &&
                         _selectedDate.year == DateTime.now().year
-                    ? 'Today Report'
+                    ? 'Today\'s Report'
                     : 'Report for ${_selectedDate.day}/${_selectedDate.month}',
                 style: TextStyle(
                   fontSize: titleFontSize,

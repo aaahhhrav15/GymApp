@@ -26,6 +26,7 @@ class _MrMusclePageState extends State<MrMusclePage>
   bool isScanning = false;
   bool isConnected = false;
   bool _scanningSessionActive = false; // Track if we're in an active scanning session
+  bool _isMeasuring = false; // Track if data is being measured (data coming but not stabilized)
   bool hasUserProfile = false;
   bool useMetricUnits = true; // true for metric, false for imperial
   bool _isCheckingServices =
@@ -1174,6 +1175,7 @@ class _MrMusclePageState extends State<MrMusclePage>
 
     setState(() {
       isScanning = true;
+      _isMeasuring = false; // Reset measuring state when starting new scan
       _scanningSessionActive = true; // Mark scanning session as active
       devices.clear();
     });
@@ -1270,6 +1272,7 @@ class _MrMusclePageState extends State<MrMusclePage>
   }
 
   void _stopScan() {
+    _isMeasuring = false;
     // Cancel timeout timer
     _scanTimeoutTimer?.cancel();
     _scanTimeoutTimer = null;
@@ -1325,7 +1328,7 @@ class _MrMusclePageState extends State<MrMusclePage>
           : theme.colorScheme.surface,
       appBar: AppBar(
         title: Text(
-          "Body Fat Scale",
+          "Body Composition",
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onPrimary,
@@ -1348,129 +1351,222 @@ class _MrMusclePageState extends State<MrMusclePage>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // User Profile Status
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: hasUserProfile
-                      ? [
-                          theme.colorScheme.primary.withOpacity(0.8),
-                          theme.colorScheme.primary
-                        ]
-                      : [
-                          theme.colorScheme.secondary.withOpacity(0.8),
-                          theme.colorScheme.secondary
-                        ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(screenWidth * 0.04),
-                boxShadow: [
-                  BoxShadow(
-                    color: (hasUserProfile
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.secondary)
-                        .withOpacity(0.3),
-                    blurRadius: screenWidth * 0.02,
-                    offset: Offset(0, screenWidth * 0.01),
+            Consumer<ProfileProvider>(
+              builder: (context, profileProvider, child) {
+                final userProfile = profileProvider.userProfile;
+                final displayName = userName.isNotEmpty ? _toTitleCase(userName) : "User";
+                // Use gender from profile if available, otherwise use userSex
+                final displayGender = userProfile?.gender != null 
+                    ? _capitalizeFirst(userProfile!.gender!)
+                    : (userSex == ICSexType.ICSexTypeMale ? 'Male' : 'Female');
+                
+                return Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.shadow.withOpacity(0.08),
+                        blurRadius: 15,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(screenWidth * 0.05),
-                child: Column(
-                  children: [
-                    Row(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.04,
+                      vertical: screenWidth * 0.03,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Profile Image with gradient ring
                         Container(
-                          padding: EdgeInsets.all(screenWidth * 0.02),
+                          padding: EdgeInsets.all(screenWidth * 0.008),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.onPrimary.withOpacity(0.2),
-                            borderRadius:
-                                BorderRadius.circular(screenWidth * 0.03),
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                theme.colorScheme.primary,
+                                theme.colorScheme.tertiary,
+                              ],
+                            ),
                           ),
-                          child: Icon(
-                            hasUserProfile ? Icons.person : Icons.person_add,
-                            color: theme.colorScheme.onPrimary,
-                            size: screenWidth * 0.06,
+                          child: Container(
+                            padding: EdgeInsets.all(screenWidth * 0.006),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.colorScheme.surface,
+                            ),
+                            child: Container(
+                              width: screenWidth * 0.12,
+                              height: screenWidth * 0.12,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: theme.colorScheme.primary.withOpacity(0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: userProfile?.profileImageUrl != null
+                                    ? Image.network(
+                                        userProfile!.profileImageUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return _buildDefaultAvatar(screenWidth, displayName);
+                                        },
+                                        loadingBuilder: (context, child, loadingProgress) {
+                                          if (loadingProgress == null) return child;
+                                          return _buildLoadingAvatar(screenWidth);
+                                        },
+                                      )
+                                    : _buildDefaultAvatar(screenWidth, displayName),
+                              ),
+                            ),
                           ),
                         ),
-                        SizedBox(width: screenWidth * 0.04),
+
+                        SizedBox(width: screenWidth * 0.035),
+
+                        // Profile Info
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                hasUserProfile
-                                    ? "Profile Set"
-                                    : "Profile Required",
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onPrimary,
-                                ),
+                              // Profile Set Title with badge style
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenWidth * 0.025,
+                                      vertical: screenWidth * 0.008,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: hasUserProfile
+                                          ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+                                          : theme.colorScheme.errorContainer.withOpacity(0.3),
+                                      borderRadius: BorderRadius.circular(screenWidth * 0.015),
+                                    ),
+                                    child: Text(
+                                      hasUserProfile ? "Profile Set" : "Profile Required",
+                                      style: TextStyle(
+                                        fontSize: screenWidth * 0.032,
+                                        fontWeight: FontWeight.bold,
+                                        color: hasUserProfile
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.error,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
+
                               if (hasUserProfile) ...[
-                                SizedBox(height: screenWidth * 0.01),
+                                SizedBox(height: screenWidth * 0.015),
+                                // Name
                                 Text(
-                                  userName.isNotEmpty ? userName : "User",
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    color: theme.colorScheme.onPrimary
-                                        .withOpacity(0.9),
+                                  displayName,
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.04,
                                     fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface,
                                   ),
                                 ),
-                                SizedBox(height: screenWidth * 0.005),
-                                Text(
-                                  "Age: $userAge, Height: ${userHeight != null ? userHeight!.toStringAsFixed(0) : 'not set'}${useMetricUnits ? 'cm' : 'in'}, ${userSex == ICSexType.ICSexTypeMale ? 'Male' : 'Female'}",
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onPrimary
-                                        .withOpacity(0.9),
-                                  ),
+                                SizedBox(height: screenWidth * 0.01),
+                                // Details - Inline
+                                Row(
+                                  children: [
+                                    _buildDetailChip(
+                                      "Age: $userAge",
+                                      screenWidth,
+                                      theme,
+                                      isFirst: true,
+                                    ),
+                                    SizedBox(width: screenWidth * 0.02),
+                                    _buildDetailChip(
+                                      "H: ${userHeight != null ? userHeight!.toStringAsFixed(0) : 'N/A'}${useMetricUnits ? 'cm' : 'in'}",
+                                      screenWidth,
+                                      theme,
+                                    ),
+                                    SizedBox(width: screenWidth * 0.02),
+                                    _buildDetailChip(
+                                      displayGender,
+                                      screenWidth,
+                                      theme,
+                                    ),
+                                  ],
                                 ),
                               ] else ...[
-                                SizedBox(height: screenWidth * 0.01),
+                                SizedBox(height: screenWidth * 0.015),
                                 // Show profile details if they are fetched, even if hasUserProfile is false
                                 if (userName.isNotEmpty || userHeight != null || userDOB != null) ...[
                                   Text(
-                                    userName.isNotEmpty ? userName : "User",
-                                    style: theme.textTheme.titleSmall?.copyWith(
-                                      color: theme.colorScheme.onPrimary
-                                          .withOpacity(0.9),
+                                    displayName,
+                                    style: TextStyle(
+                                      fontSize: screenWidth * 0.04,
                                       fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onSurface,
                                     ),
                                   ),
-                                  SizedBox(height: screenWidth * 0.005),
-                                  Text(
-                                    "Age: $userAge, Height: ${userHeight != null ? userHeight!.toStringAsFixed(0) : 'not set'}${useMetricUnits ? 'cm' : 'in'}, ${userSex == ICSexType.ICSexTypeMale ? 'Male' : 'Female'}",
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onPrimary
-                                          .withOpacity(0.9),
-                                    ),
+                                  SizedBox(height: screenWidth * 0.01),
+                                  Wrap(
+                                    spacing: screenWidth * 0.02,
+                                    runSpacing: screenWidth * 0.008,
+                                    children: [
+                                      _buildDetailChip(
+                                        "Age: $userAge",
+                                        screenWidth,
+                                        theme,
+                                        isFirst: true,
+                                      ),
+                                      _buildDetailChip(
+                                        "H: ${userHeight != null ? userHeight!.toStringAsFixed(0) : 'N/A'}${useMetricUnits ? 'cm' : 'in'}",
+                                        screenWidth,
+                                        theme,
+                                      ),
+                                      _buildDetailChip(
+                                        displayGender,
+                                        screenWidth,
+                                        theme,
+                                      ),
+                                    ],
                                   ),
                                   // Show message if details are missing
                                   if (_checkMissingDetails().isNotEmpty) ...[
-                                    SizedBox(height: screenWidth * 0.01),
+                                    SizedBox(height: screenWidth * 0.012),
                                     Container(
-                                      padding: EdgeInsets.all(screenWidth * 0.02),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: screenWidth * 0.025,
+                                        vertical: screenWidth * 0.01,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: Colors.orange.withOpacity(0.2),
+                                        color: Colors.orange.withOpacity(0.15),
                                         borderRadius: BorderRadius.circular(screenWidth * 0.02),
                                         border: Border.all(
-                                          color: Colors.orange.withOpacity(0.5),
+                                          color: Colors.orange.withOpacity(0.3),
                                           width: 1,
                                         ),
                                       ),
                                       child: Row(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
                                             Icons.info_outline,
-                                            size: screenWidth * 0.04,
-                                            color: Colors.orange,
+                                            size: screenWidth * 0.032,
+                                            color: Colors.orange.shade700,
                                           ),
-                                          SizedBox(width: screenWidth * 0.02),
-                                          Expanded(
+                                          SizedBox(width: screenWidth * 0.015),
+                                          Flexible(
                                             child: Text(
                                               "Please fetch your details from the profile",
-                                              style: theme.textTheme.bodySmall?.copyWith(
+                                              style: TextStyle(
                                                 color: Colors.orange.shade900,
                                                 fontSize: screenWidth * 0.03,
                                               ),
@@ -1483,9 +1579,10 @@ class _MrMusclePageState extends State<MrMusclePage>
                                 ] else ...[
                                   Text(
                                     "Please fetch your details from the profile for accurate body composition measurements",
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onPrimary
-                                          .withOpacity(0.9),
+                                    style: TextStyle(
+                                      fontSize: screenWidth * 0.032,
+                                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                      height: 1.4,
                                     ),
                                   ),
                                 ],
@@ -1493,12 +1590,11 @@ class _MrMusclePageState extends State<MrMusclePage>
                             ],
                           ),
                         ),
-                        // Edit button removed - users should edit profile in profile page only
                       ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
 
             SizedBox(height: screenWidth * 0.04),
@@ -1506,89 +1602,94 @@ class _MrMusclePageState extends State<MrMusclePage>
             // Connection Status
             Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isConnected
-                      ? [
-                          theme.colorScheme.tertiary.withOpacity(0.8),
-                          theme.colorScheme.tertiary
-                        ]
-                      : [
-                          theme.colorScheme.error.withOpacity(0.8),
-                          theme.colorScheme.error
-                        ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                border: Border.all(
+                  color: isConnected
+                      ? Colors.green.withOpacity(0.5)
+                      : Colors.orange.withOpacity(0.5),
+                  width: 1.5,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: (isConnected
-                            ? theme.colorScheme.tertiary
-                            : theme.colorScheme.error)
-                        .withOpacity(0.3),
-                    blurRadius: screenWidth * 0.02,
-                    offset: Offset(0, screenWidth * 0.01),
+                            ? Colors.green
+                            : Colors.orange)
+                        .withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Padding(
-                padding: EdgeInsets.all(screenWidth * 0.05),
-                child: Column(
+                padding: EdgeInsets.all(screenWidth * 0.04),
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(screenWidth * 0.02),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.onError.withOpacity(0.2),
-                            borderRadius:
-                                BorderRadius.circular(screenWidth * 0.03),
-                          ),
-                          child: Icon(
+                    Container(
+                      padding: EdgeInsets.all(screenWidth * 0.025),
+                      decoration: BoxDecoration(
+                        color: isConnected
+                            ? Colors.green.withOpacity(0.15)
+                            : Colors.orange.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isConnected
+                            ? Icons.bluetooth_connected
+                            : Icons.bluetooth_disabled,
+                        color: isConnected
+                            ? Colors.green.shade700
+                            : Colors.orange.shade700,
+                        size: screenWidth * 0.06,
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.035),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
                             isConnected
-                                ? Icons.bluetooth_connected
-                                : Icons.bluetooth_disabled,
-                            color: theme.colorScheme.onError,
-                            size: screenWidth * 0.06,
+                                ? "Connected to Scale"
+                                : "Not Connected",
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.042,
+                              fontWeight: FontWeight.bold,
+                              color: isConnected
+                                  ? Colors.green.shade700
+                                  : Colors.orange.shade700,
+                            ),
                           ),
-                        ),
-                        SizedBox(width: screenWidth * 0.04),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isConnected
-                                    ? "Connected to Scale"
-                                    : "Not Connected",
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onError,
-                                ),
+                          if (isConnected) ...[
+                            SizedBox(height: screenWidth * 0.008),
+                            Text(
+                              "Ready for measurement - step on the scale barefoot",
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.032,
+                                color: theme.colorScheme.onSurface.withOpacity(0.7),
                               ),
-                              if (isConnected) ...[
-                                SizedBox(height: screenWidth * 0.01),
-                                Text(
-                                  "Ready for measurement - step on the scale barefoot",
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onError
-                                        .withOpacity(0.9),
-                                  ),
-                                ),
-                              ] else if (devices.isNotEmpty) ...[
-                                SizedBox(height: screenWidth * 0.01),
-                                Text(
-                                  "Found ${devices.length} device(s) - tap Connect to pair",
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onError
-                                        .withOpacity(0.9),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                          ] else if (devices.isNotEmpty) ...[
+                            SizedBox(height: screenWidth * 0.008),
+                            Text(
+                              "Found ${devices.length} device(s) - tap Connect to pair",
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.032,
+                                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                              ),
+                            ),
+                          ] else ...[
+                            SizedBox(height: screenWidth * 0.008),
+                            Text(
+                              "Scan for scales to connect",
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.032,
+                                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1600,82 +1701,212 @@ class _MrMusclePageState extends State<MrMusclePage>
             // Control Buttons
             Container(
               decoration: BoxDecoration(
-                color: isDarkMode ? theme.cardColor : theme.colorScheme.surface,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(screenWidth * 0.04),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.shadowColor.withOpacity(0.1),
-                    blurRadius: screenWidth * 0.025,
-                    offset: Offset(0, screenWidth * 0.01),
+                    color: theme.colorScheme.shadow.withOpacity(0.08),
+                    blurRadius: 15,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Padding(
                 padding: EdgeInsets.all(screenWidth * 0.05),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "Scale Control",
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(screenWidth * 0.025),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                          ),
+                          child: Icon(
+                            Icons.settings_bluetooth,
+                            color: theme.colorScheme.primary,
+                            size: screenWidth * 0.055,
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.03),
+                        Text(
+                          "Scale Control",
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.045,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
                     ),
                     SizedBox(height: screenWidth * 0.04),
                     SizedBox(
                       width: double.infinity,
-                      height: screenWidth * 0.14,
+                      height: screenWidth * 0.13,
                       child: ElevatedButton.icon(
-                        onPressed: isScanning ? _stopScan : _startScan,
-                        icon: isScanning
-                            ? SizedBox(
-                                width: screenWidth * 0.06,
-                                height: screenWidth * 0.06,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    theme.colorScheme.onPrimary,
-                                  ),
-                                ),
+                        onPressed: (_isMeasuring || isScanning) ? _stopScan : _startScan,
+                        icon: _isMeasuring
+                            ? Icon(
+                                Icons.analytics,
+                                size: screenWidth * 0.055,
                               )
-                            : Icon(
-                                Icons.bluetooth_searching,
-                                size: screenWidth * 0.06,
-                              ),
+                            : isScanning
+                                ? SizedBox(
+                                    width: screenWidth * 0.055,
+                                    height: screenWidth * 0.055,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        theme.colorScheme.onPrimary,
+                                      ),
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.bluetooth_searching,
+                                    size: screenWidth * 0.055,
+                                  ),
                         label: Text(
-                          isScanning ? "Scanning..." : "Scan for Scales",
-                          style: theme.textTheme.titleSmall?.copyWith(
+                          _isMeasuring
+                              ? "Measuring Data..."
+                              : isScanning
+                                  ? "Scanning..."
+                                  : "Scan for Scales",
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.038,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isScanning
-                              ? theme.colorScheme.primary.withOpacity(0.7)
-                              : theme.colorScheme.primary,
+                          backgroundColor: _isMeasuring
+                              ? Colors.green.shade600
+                              : isScanning
+                                  ? theme.colorScheme.primary.withOpacity(0.8)
+                                  : theme.colorScheme.primary,
                           foregroundColor: theme.colorScheme.onPrimary,
-                          elevation: 4,
-                          shadowColor: (isScanning
-                                  ? theme.colorScheme.primary
+                          elevation: (_isMeasuring || isScanning) ? 2 : 4,
+                          shadowColor: (_isMeasuring
+                                  ? Colors.green
                                   : theme.colorScheme.primary)
                               .withOpacity(0.3),
                           shape: RoundedRectangleBorder(
                             borderRadius:
-                                BorderRadius.circular(screenWidth * 0.03),
+                                BorderRadius.circular(screenWidth * 0.035),
                           ),
                         ),
                       ),
                     ),
-                    if (isScanning) ...[
-                      SizedBox(height: screenWidth * 0.03),
+                    SizedBox(height: screenWidth * 0.025),
+                    Container(
+                      padding: EdgeInsets.all(screenWidth * 0.035),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                        border: Border.all(
+                          color: theme.colorScheme.primary.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            size: screenWidth * 0.045,
+                            color: theme.colorScheme.primary,
+                          ),
+                          SizedBox(width: screenWidth * 0.025),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Important: Enable Bluetooth and Location",
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.035,
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                SizedBox(height: screenWidth * 0.008),
+                                Text(
+                                  "Please enable Bluetooth and Location services before standing on the scale. This ensures accurate measurements and proper device connection.",
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.032,
+                                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_isMeasuring) ...[
+                      SizedBox(height: screenWidth * 0.025),
+                      Container(
+                        padding: EdgeInsets.all(screenWidth * 0.035),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                          border: Border.all(
+                            color: Colors.green.withOpacity(0.3),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: screenWidth * 0.045,
+                              height: screenWidth * 0.045,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.green.shade700,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: screenWidth * 0.025),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Measuring Data...",
+                                    style: TextStyle(
+                                      fontSize: screenWidth * 0.036,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green.shade700,
+                                    ),
+                                  ),
+                                  SizedBox(height: screenWidth * 0.005),
+                                  Text(
+                                    "Please stay still on the scale. Measurement will complete automatically.",
+                                    style: TextStyle(
+                                      fontSize: screenWidth * 0.031,
+                                      color: Colors.green.shade700.withOpacity(0.8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (isScanning) ...[
+                      SizedBox(height: screenWidth * 0.025),
                       Container(
                         padding: EdgeInsets.all(screenWidth * 0.03),
                         decoration: BoxDecoration(
                           color: theme.colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
                         ),
                         child: Row(
                           children: [
                             Icon(
-                              Icons.info_outline,
+                              Icons.bluetooth_searching,
                               size: screenWidth * 0.04,
                               color: theme.colorScheme.primary,
                             ),
@@ -1683,7 +1914,8 @@ class _MrMusclePageState extends State<MrMusclePage>
                             Expanded(
                               child: Text(
                                 "Make sure your scale is powered on and nearby",
-                                style: theme.textTheme.bodySmall?.copyWith(
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.032,
                                   color: theme.colorScheme.primary,
                                 ),
                               ),
@@ -1841,7 +2073,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                       SizedBox(height: screenWidth * 0.03),
 
                       _buildMeasurementCard(
-                        "Body fat",
+                        "Body Fat",
                         "${_getCurrentBodyFat().toStringAsFixed(1)}%",
                         "The proportion of adipose tissue versus muscle in a body",
                         Icons.fitness_center,
@@ -1855,7 +2087,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                       SizedBox(height: screenWidth * 0.03),
 
                       _buildMeasurementCard(
-                        "Subcutaneous fat",
+                        "Subcutaneous Fat",
                         "${_getCurrentSubcutaneousFat().toStringAsFixed(1)}%",
                         "Subcutaneous adipose tissue (fat) lies between the dermis layer (skin) and fascia layer (connective tissue)",
                         Icons.layers,
@@ -1870,7 +2102,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                       SizedBox(height: screenWidth * 0.03),
 
                       _buildMeasurementCard(
-                        "Visceral fat",
+                        "Visceral Fat",
                         "${_getCurrentVisceralFat().toStringAsFixed(1)}",
                         "Fat that wraps around your abdominal organs deep inside your body",
                         Icons.warning_amber,
@@ -1885,7 +2117,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                       SizedBox(height: screenWidth * 0.03),
 
                       _buildMeasurementCard(
-                        "Body water",
+                        "Body Water",
                         "${_getCurrentWater().toStringAsFixed(1)}%",
                         "The percentage of fluid in the human body",
                         Icons.water_drop,
@@ -1900,7 +2132,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                       SizedBox(height: screenWidth * 0.03),
 
                       _buildMeasurementCard(
-                        "Skeletal muscle",
+                        "Skeletal Muscle",
                         "${_getCurrentSkeletalMuscle().toStringAsFixed(1)}%",
                         "Muscle attached to bones that you can control voluntarily",
                         Icons.accessibility_new,
@@ -1947,7 +2179,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                       SizedBox(height: screenWidth * 0.03),
 
                       _buildMeasurementCard(
-                        "Muscle rate",
+                        "Muscle Rate",
                         "${_getCurrentMuscle().toStringAsFixed(1)}%",
                         "The proportion of muscle in your body",
                         Icons.fitness_center,
@@ -2157,7 +2389,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                                       size: screenWidth * 0.04),
                                 ),
                                 title: Text(
-                                  "Body Fat Scale",
+                                  "Body Composition",
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: screenWidth * 0.035,
@@ -3470,18 +3702,22 @@ class _MrMusclePageState extends State<MrMusclePage>
 
     print("=== WEIGHT DATA RECEIVED ===");
     print("Weight(kg): ${data.weight_kg}");
-    print("Body Fat %: ${data.bodyFatPercent}");
+    print("Body fat %: ${data.bodyFatPercent}");
     print("Muscle %: ${data.musclePercent}");
     print("Water %: ${data.moisturePercent}");
-    print("Bone Mass kg: ${data.boneMass}");
+    print("Bone mass kg: ${data.boneMass}");
     print("BMR: ${data.bmr} kcal");
     print("Subcutaneous Fat %: ${data.subcutaneousFatPercent}");
-    print("Visceral Fat: ${data.visceralFat}");
+    print("Visceral fat: ${data.visceralFat}");
     print("Protein %: ${data.proteinPercent}");
-    print("Skeletal Muscle %: ${data.smPercent}");
+    print("Skeletal muscle %: ${data.smPercent}");
     print("Is Stabilized: ${data.isStabilized}");
     print("Data Calc Type: ${data.data_calc_type}");
     print("BFA Type: ${data.bfa_type}");
+
+    // Update measuring state: true if data is coming but not stabilized
+    final wasMeasuring = _isMeasuring;
+    _isMeasuring = !data.isStabilized && data.weight_kg > 0;
 
     setState(() {
       lastData = data;
@@ -3504,6 +3740,19 @@ class _MrMusclePageState extends State<MrMusclePage>
     // Only save and show success message when measurement is stabilized
     // This prevents multiple saves during weight fluctuations
     if (data.isStabilized) {
+      // Stop measuring state
+      _isMeasuring = false;
+      
+      // Auto-stop scanning after measurement is complete
+      if (isScanning && mounted) {
+        print("✅ Measurement stabilized - auto-stopping scan");
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && isScanning) {
+            _stopScan();
+          }
+        });
+      }
+
       // Check if we've already saved this stabilized measurement
       // Allow save if weight changed significantly (>0.1kg) or it's been more than 5 seconds since last save
       final now = DateTime.now();
@@ -3520,6 +3769,9 @@ class _MrMusclePageState extends State<MrMusclePage>
         // Persist latest summary for home screen preview
         _saveLatestBodyComp(data);
       }
+    } else if (!wasMeasuring && _isMeasuring) {
+      // Just started measuring - update state
+      setState(() {});
     }
   }
 
@@ -3765,7 +4017,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildRangeCard(
-                        "Body Fat %",
+                        "Body fat %",
                         [
                           "Below Standard: <10% (Very Low)",
                           "Good: 10-20% (Healthy)",
@@ -3804,7 +4056,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                       ),
                       SizedBox(height: screenWidth * 0.04),
                       _buildRangeCard(
-                        "Bone Mass (kg)",
+                        "Bone mass (kg)",
                         [
                           "Below Standard: <2.0kg (Low)",
                           "Good: 2.0-3.0kg (Healthy)",
@@ -4190,7 +4442,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                                       SizedBox(width: screenWidth * 0.025),
                                       Expanded(
                                         child: _buildHistoryChip(
-                                          "Body Fat",
+                                          "Body fat",
                                           "${bodyFat.toStringAsFixed(1)}%",
                                           theme,
                                           screenWidth,
@@ -4356,7 +4608,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                   statusColor: _getBMIColor(double.parse(measurement['bmi'].toStringAsFixed(1))),
                 ),
                 _buildEnhancedDetailRow(
-                  "Body Fat",
+                  "Body fat",
                   "${measurement['body_fat_percent'].toStringAsFixed(1)}%",
                   _getBodyFatRangeInfo(measurement['body_fat_percent'] as double),
                   theme,
@@ -4375,7 +4627,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                   theme,
                 ),
                 _buildEnhancedDetailRow(
-                  "Bone Mass",
+                  "Bone mass",
                   "${measurement['bone_mass_kg'].toStringAsFixed(1)} kg",
                   "Healthy range: 2.0-4.0 kg (varies by gender)",
                   theme,
@@ -4396,7 +4648,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                   ),
                 if (measurement['visceral_fat'] > 0)
                   _buildEnhancedDetailRow(
-                    "Visceral Fat",
+                    "Visceral fat",
                     measurement['visceral_fat'].toStringAsFixed(1),
                     _getVisceralFatRangeInfo(measurement['visceral_fat'] as double),
                     theme,
@@ -4411,7 +4663,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                   ),
                 if (measurement['sm_percent'] > 0)
                   _buildEnhancedDetailRow(
-                    "Skeletal Muscle",
+                    "Skeletal muscle",
                     "${measurement['sm_percent'].toStringAsFixed(1)}%",
                     "Healthy range: 30-50% (varies by gender)",
                     theme,
@@ -5234,5 +5486,97 @@ class _MrMusclePageState extends State<MrMusclePage>
     } else {
       print("⚠️ Skipping auto-add - MAC: ${deviceInfo.macAddr}, Type: ${deviceInfo.type}");
     }
+  }
+
+  // Helper methods for profile display
+  /// Capitalizes the first letter of a string (e.g., "male" -> "Male")
+  String _capitalizeFirst(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1).toLowerCase();
+  }
+
+  /// Converts a string to title case (e.g., "john doe" -> "John Doe")
+  String _toTitleCase(String text) {
+    if (text.isEmpty) return text;
+    return text.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'U';
+    final parts = name.split(' ');
+    if (parts.length == 1) {
+      return parts[0][0].toUpperCase();
+    }
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
+  Widget _buildDefaultAvatar(double screenWidth, String name) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).colorScheme.primary.withOpacity(0.8),
+            Theme.of(context).colorScheme.tertiary.withOpacity(0.8),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          _getInitials(name),
+          style: TextStyle(
+            fontSize: screenWidth * 0.04,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingAvatar(double screenWidth) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      ),
+      child: Center(
+        child: SizedBox(
+          width: screenWidth * 0.04,
+          height: screenWidth * 0.04,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailChip(String text, double screenWidth, ThemeData theme, {bool isFirst = false}) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: isFirst ? 0 : screenWidth * 0.02,
+        right: screenWidth * 0.02,
+        top: screenWidth * 0.006,
+        bottom: screenWidth * 0.006,
+      ),
+      margin: EdgeInsets.only(left: isFirst ? 0 : 0),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(screenWidth * 0.015),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: screenWidth * 0.031,
+          color: theme.colorScheme.onSurface.withOpacity(0.8),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
   }
 }

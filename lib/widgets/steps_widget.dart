@@ -38,23 +38,56 @@ class _StepsWidgetState extends State<StepsWidget> {
     }
   }
 
+  // Theme-aware colors
+  Color _getPrimaryColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFFFFB74D) // Yellow/amber for dark mode
+        : const Color(0xFFE64A19); // Deep orange for light mode
+  }
+
+  Color _getSecondaryColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFFFFCC80) // Light yellow for dark mode
+        : const Color(0xFFBF360C);
+  }
+
+  List<Color> _getGradientColors(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? [
+            const Color(0xFF2D2419), // Yellowish dark tone
+            const Color(0xFF3D2F1F),
+            const Color(0xFF4D3A25),
+          ]
+        : [
+            const Color(0xFFFFF3E0),
+            const Color(0xFFFFE0B2),
+            const Color(0xFFFFCC80),
+          ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final screenWidth = screenSize.width;
     final screenHeight = screenSize.height;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Responsive sizing
-    final containerPadding = screenWidth * 0.04; // 4% of screen width
-    final containerHeight = screenHeight * 0.17; // 17% of screen height
-    final borderRadius = screenWidth * 0.05; // 5% of screen width
-    final iconSize = screenWidth * 0.05; // 5% of screen width
-    final titleFontSize = screenWidth * 0.035; // 3.5% of screen width
-    final stepsFontSize = screenWidth * 0.06; // 6% of screen width
-    final targetFontSize = screenWidth * 0.03; // 3% of screen width
-    final statusFontSize = screenWidth * 0.025; // 2.5% of screen width
-    final spacingSmall = screenWidth * 0.015; // 1.5% of screen width
-    final spacingMedium = screenHeight * 0.015; // 1.5% of screen height
+    final containerPadding = screenWidth * 0.04;
+    final containerHeight = screenHeight * 0.17;
+    final borderRadius = screenWidth * 0.05;
+    final iconSize = screenWidth * 0.05;
+    final titleFontSize = screenWidth * 0.035;
+    final mainNumberFontSize = screenWidth * 0.055; // Consistent main number
+    final secondaryFontSize = screenWidth * 0.03; // Consistent secondary text
+    final labelFontSize = screenWidth * 0.028; // Consistent labels
+    final statusFontSize = screenWidth * 0.025; // Consistent status
+    final spacingSmall = screenWidth * 0.015;
+    final spacingMedium = screenHeight * 0.015;
+
+    final primaryColor = _getPrimaryColor(context);
+    final secondaryColor = _getSecondaryColor(context);
+    final gradientColors = _getGradientColors(context);
 
     return Consumer<StepsProvider>(
       builder: (context, stepsProvider, child) {
@@ -65,19 +98,26 @@ class _StepsWidgetState extends State<StepsWidget> {
             padding: EdgeInsets.all(containerPadding),
             height: containerHeight,
             decoration: BoxDecoration(
-              color: context.stepsBackground,
+              color: isDark 
+                  ? const Color(0xFF2D2419) // Yellowish dark tone
+                  : const Color(0xFFFFF3E0),
               borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(
+                color: primaryColor.withOpacity(isDark ? 0.4 : 0.3),
+                width: 1.5,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+                  color: primaryColor.withOpacity(isDark ? 0.2 : 0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                  spreadRadius: 2,
                 ),
               ],
             ),
             child: Center(
               child: CircularProgressIndicator(
-                color: context.stepsPrimary,
+                color: primaryColor,
                 strokeWidth: 2,
               ),
             ),
@@ -96,11 +136,23 @@ class _StepsWidgetState extends State<StepsWidget> {
             padding: EdgeInsets.all(containerPadding),
             height: containerHeight,
             decoration: BoxDecoration(
-              color: context.stepsBackground,
+              color: isDark 
+                  ? const Color(0xFF2D2419) // Yellowish dark tone
+                  : const Color(0xFFFFF3E0),
               borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(
+                color: primaryColor.withOpacity(isDark ? 0.4 : 0.3),
+                width: 1.5,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: primaryColor.withOpacity(isDark ? 0.2 : 0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                  spreadRadius: 2,
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -112,18 +164,25 @@ class _StepsWidgetState extends State<StepsWidget> {
                 // Header with icon and status
                 Row(
                   children: [
-                    Icon(
-                      _getStatusIcon(pedestrianStatus),
-                      color: context.stepsPrimary,
-                      size: iconSize,
+                    Container(
+                      padding: EdgeInsets.all(screenWidth * 0.015),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(isDark ? 0.25 : 0.15),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                      ),
+                      child: Icon(
+                        _getStatusIcon(pedestrianStatus),
+                        color: primaryColor,
+                        size: iconSize,
+                      ),
                     ),
                     SizedBox(width: spacingSmall),
                     Text(
                       l10n.steps,
                       style: TextStyle(
                         fontSize: titleFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.grey[800],
                       ),
                     ),
                     const Spacer(),
@@ -134,6 +193,13 @@ class _StepsWidgetState extends State<StepsWidget> {
                       decoration: BoxDecoration(
                         color: _getStatusColor(pedestrianStatus),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _getStatusColor(pedestrianStatus).withOpacity(0.5),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ],
                       ),
                     ),
                     SizedBox(width: spacingSmall * 0.5),
@@ -141,9 +207,7 @@ class _StepsWidgetState extends State<StepsWidget> {
                       Icon(
                         Icons.arrow_forward_ios,
                         size: screenWidth * 0.03,
-                        color: (Theme.of(context).textTheme.bodyLarge?.color ??
-                                Colors.orange[800]!)
-                            .withOpacity(0.6),
+                        color: isDark ? Colors.white54 : Colors.grey[600],
                       ),
                   ],
                 ),
@@ -169,7 +233,7 @@ class _StepsWidgetState extends State<StepsWidget> {
                                 strokeWidth: screenWidth * 0.015,
                                 backgroundColor: Colors.transparent,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  context.stepsPrimary.withOpacity(0.3),
+                                  primaryColor.withOpacity(isDark ? 0.3 : 0.25),
                                 ),
                               ),
                             ),
@@ -190,7 +254,7 @@ class _StepsWidgetState extends State<StepsWidget> {
                                     strokeWidth: screenWidth * 0.015,
                                     backgroundColor: Colors.transparent,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      context.stepsPrimary,
+                                      primaryColor,
                                     ),
                                   );
                                 },
@@ -206,9 +270,9 @@ class _StepsWidgetState extends State<StepsWidget> {
                                   return Text(
                                     '$value%',
                                     style: TextStyle(
-                                      fontSize: screenWidth * 0.04,
+                                      fontSize: screenWidth * 0.035,
                                       fontWeight: FontWeight.bold,
-                                      color: context.stepsSecondary,
+                                      color: secondaryColor,
                                     ),
                                   );
                                 },
@@ -237,12 +301,9 @@ class _StepsWidgetState extends State<StepsWidget> {
                                   child: Text(
                                     _formatNumber(value),
                                     style: TextStyle(
-                                      fontSize: stepsFontSize,
+                                      fontSize: mainNumberFontSize, // Consistent size
                                       fontWeight: FontWeight.bold,
-                                      color: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.color,
+                                      color: isDark ? Colors.white : Colors.grey[900],
                                     ),
                                     maxLines: 1,
                                   ),
@@ -252,11 +313,8 @@ class _StepsWidgetState extends State<StepsWidget> {
                             Text(
                               '/ ${_formatNumber(targetSteps)}',
                               style: TextStyle(
-                                fontSize: targetFontSize,
-                                color: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.color,
+                                fontSize: secondaryFontSize, // Consistent size
+                                color: isDark ? Colors.white60 : Colors.grey[600],
                               ),
                             ),
                             SizedBox(height: spacingSmall * 0.5),
@@ -267,11 +325,7 @@ class _StepsWidgetState extends State<StepsWidget> {
                                   _getStatusText(pedestrianStatus),
                                   style: TextStyle(
                                     fontSize: statusFontSize,
-                                    color: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.color
-                                        ?.withOpacity(0.8),
+                                    color: isDark ? Colors.white54 : Colors.grey[600],
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -279,8 +333,8 @@ class _StepsWidgetState extends State<StepsWidget> {
                                   SizedBox(width: spacingSmall * 0.5),
                                   Icon(
                                     Icons.star,
-                                    size: statusFontSize,
-                                    color: context.stepsPrimary,
+                                    size: statusFontSize * 1.2,
+                                    color: Colors.amber,
                                   ),
                                 ],
                               ],

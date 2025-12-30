@@ -27,25 +27,54 @@ class _NutritionWidgetState extends State<NutritionWidget> {
     });
   }
 
+  // Theme-aware colors
+  Color _getPrimaryColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF81C784) // Light green for dark mode
+        : const Color(0xFF388E3C); // Deep green for light mode
+  }
+
+  Color _getSecondaryColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFFA5D6A7)
+        : const Color(0xFF1B5E20);
+  }
+
+  List<Color> _getGradientColors(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? [
+            const Color(0xFF1A2E1A),
+            const Color(0xFF243D24),
+            const Color(0xFF2E4C2E),
+          ]
+        : [
+            const Color(0xFFE8F5E9),
+            const Color(0xFFC8E6C9),
+            const Color(0xFFA5D6A7),
+          ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Responsive dimensions
     final containerPadding = screenWidth * 0.03;
     final containerHeight = screenHeight * 0.175;
     final borderRadius = screenWidth * 0.05;
     final iconPadding = screenWidth * 0.015;
-    final iconBorderRadius = screenWidth * 0.025;
+    final iconBorderRadius = screenWidth * 0.02;
     final spacingMedium = screenHeight * 0.015;
     final spacingSmall = screenHeight * 0.006;
 
-    // Font sizes
+    // Font sizes - consistent across all widgets
     final titleFontSize = screenWidth * 0.0375;
-    final caloriesFontSize = screenWidth * 0.045;
-    final labelFontSize = screenWidth * 0.028;
+    final mainNumberFontSize = screenWidth * 0.055; // Consistent main number size
+    final secondaryFontSize = screenWidth * 0.03; // Consistent secondary text
+    final labelFontSize = screenWidth * 0.028; // Consistent labels
     final percentageFontSize = screenWidth * 0.023;
     final loadingFontSize = screenWidth * 0.028;
 
@@ -54,6 +83,9 @@ class _NutritionWidgetState extends State<NutritionWidget> {
     final refreshIconSize = screenWidth * 0.035;
     final circleSize = screenWidth * 0.11;
     final strokeWidth = screenWidth * 0.0075;
+
+    final primaryColor = _getPrimaryColor(context);
+    final gradientColors = _getGradientColors(context);
 
     return Consumer<NutritionProvider>(
       builder: (context, nutritionProvider, child) {
@@ -70,6 +102,9 @@ class _NutritionWidgetState extends State<NutritionWidget> {
             titleFontSize,
             mainIconSize,
             loadingFontSize,
+            primaryColor,
+            gradientColors,
+            isDark,
           );
         }
 
@@ -85,11 +120,23 @@ class _NutritionWidgetState extends State<NutritionWidget> {
             padding: EdgeInsets.all(containerPadding),
             height: containerHeight,
             decoration: BoxDecoration(
-              color: context.nutritionBackground,
+              color: isDark 
+                  ? const Color(0xFF1A2E1A)
+                  : const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(
+                color: primaryColor.withOpacity(isDark ? 0.4 : 0.3),
+                width: 1.5,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: primaryColor.withOpacity(isDark ? 0.2 : 0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                  spreadRadius: 2,
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -104,12 +151,12 @@ class _NutritionWidgetState extends State<NutritionWidget> {
                     Container(
                       padding: EdgeInsets.all(iconPadding),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
+                        color: primaryColor.withOpacity(isDark ? 0.25 : 0.15),
                         borderRadius: BorderRadius.circular(iconBorderRadius),
                       ),
                       child: Icon(
                         Icons.restaurant_menu,
-                        color: context.nutritionPrimary,
+                        color: primaryColor,
                         size: mainIconSize,
                       ),
                     ),
@@ -119,8 +166,8 @@ class _NutritionWidgetState extends State<NutritionWidget> {
                         l10n.nutrition,
                         style: TextStyle(
                           fontSize: titleFontSize,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.grey[800],
                         ),
                       ),
                     ),
@@ -130,10 +177,14 @@ class _NutritionWidgetState extends State<NutritionWidget> {
                           context.read<NutritionProvider>().refreshForNewDay(),
                       child: Container(
                         padding: EdgeInsets.all(spacingSmall * 0.7),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withOpacity(isDark ? 0.2 : 0.1),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.015),
+                        ),
                         child: Icon(
                           Icons.refresh,
                           size: refreshIconSize,
-                          color: context.nutritionPrimary,
+                          color: primaryColor,
                         ),
                       ),
                     ),
@@ -154,12 +205,9 @@ class _NutritionWidgetState extends State<NutritionWidget> {
                             Text(
                               '${nutritionProvider.currentTotals.calories}/${nutritionProvider.nutritionGoals.calories}',
                               style: TextStyle(
-                                fontSize: caloriesFontSize,
+                                fontSize: screenWidth * 0.048, // Smaller than other main numbers
                                 fontWeight: FontWeight.bold,
-                                color: Theme.of(context)
-                                    .textTheme
-                                    .bodyLarge
-                                    ?.color,
+                                color: isDark ? Colors.white : Colors.grey[900],
                               ),
                             ),
                             SizedBox(height: spacingSmall * 0.3),
@@ -167,12 +215,7 @@ class _NutritionWidgetState extends State<NutritionWidget> {
                               l10n.calories,
                               style: TextStyle(
                                 fontSize: labelFontSize,
-                                color: (Theme.of(context)
-                                            .textTheme
-                                            .bodyLarge
-                                            ?.color ??
-                                        Colors.black87)
-                                    .withOpacity(0.7),
+                                color: isDark ? Colors.white60 : Colors.grey[600],
                               ),
                             ),
                           ],
@@ -190,9 +233,9 @@ class _NutritionWidgetState extends State<NutritionWidget> {
                               child: CircularProgressIndicator(
                                 value: calorieProgress,
                                 strokeWidth: strokeWidth,
-                                backgroundColor: Colors.white.withOpacity(0.3),
+                                backgroundColor: primaryColor.withOpacity(isDark ? 0.3 : 0.25),
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  context.nutritionPrimary,
+                                  primaryColor,
                                 ),
                               ),
                             ),
@@ -201,11 +244,8 @@ class _NutritionWidgetState extends State<NutritionWidget> {
                                 '${(calorieProgress * 100).round()}%',
                                 style: TextStyle(
                                   fontSize: percentageFontSize,
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(context)
-                                      .textTheme
-                                      .bodyLarge
-                                      ?.color,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white : Colors.grey[800],
                                 ),
                               ),
                             ),
@@ -227,22 +267,22 @@ class _NutritionWidgetState extends State<NutritionWidget> {
                       _buildMacroInfo(
                         l10n.protein,
                         '${nutritionProvider.currentTotals.protein.toInt()}g',
-                        Colors.blue[300]!,
-                        Theme.of(context).textTheme.bodyLarge?.color,
+                        isDark ? Colors.blue[300]! : Colors.blue[600]!,
+                        isDark,
                         screenWidth,
                       ),
                       _buildMacroInfo(
                         l10n.fat,
                         '${nutritionProvider.currentTotals.fat.toInt()}g',
-                        Colors.orange[300]!,
-                        Theme.of(context).textTheme.bodyLarge?.color,
+                        isDark ? Colors.orange[300]! : Colors.orange[600]!,
+                        isDark,
                         screenWidth,
                       ),
                       _buildMacroInfo(
                         l10n.carbs,
                         '${nutritionProvider.currentTotals.carbs.toInt()}g',
-                        Colors.green[300]!,
-                        Theme.of(context).textTheme.bodyLarge?.color,
+                        isDark ? Colors.purple[300]! : Colors.purple[600]!,
+                        isDark,
                         screenWidth,
                       ),
                     ],
@@ -268,6 +308,9 @@ class _NutritionWidgetState extends State<NutritionWidget> {
     double titleFontSize,
     double mainIconSize,
     double loadingFontSize,
+    Color primaryColor,
+    List<Color> gradientColors,
+    bool isDark,
   ) {
     final spacingMedium = screenHeight * 0.015;
     final loadingIndicatorSize = screenWidth * 0.04;
@@ -276,13 +319,20 @@ class _NutritionWidgetState extends State<NutritionWidget> {
       padding: EdgeInsets.all(containerPadding),
       height: containerHeight,
       decoration: BoxDecoration(
-        color: context.nutritionBackground,
+        color: isDark 
+            ? const Color(0xFF1A2E1A)
+            : const Color(0xFFE8F5E9),
         borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: primaryColor.withOpacity(isDark ? 0.4 : 0.3),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: primaryColor.withOpacity(isDark ? 0.2 : 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+            spreadRadius: 2,
           ),
         ],
       ),
@@ -295,12 +345,12 @@ class _NutritionWidgetState extends State<NutritionWidget> {
               Container(
                 padding: EdgeInsets.all(iconPadding),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.3),
+                  color: primaryColor.withOpacity(isDark ? 0.25 : 0.15),
                   borderRadius: BorderRadius.circular(iconBorderRadius),
                 ),
                 child: Icon(
                   Icons.restaurant_menu,
-                  color: context.nutritionPrimary,
+                  color: primaryColor,
                   size: mainIconSize,
                 ),
               ),
@@ -309,8 +359,8 @@ class _NutritionWidgetState extends State<NutritionWidget> {
                 l10n.nutrition,
                 style: TextStyle(
                   fontSize: titleFontSize,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : Colors.grey[800],
                 ),
               ),
               const Spacer(),
@@ -319,9 +369,7 @@ class _NutritionWidgetState extends State<NutritionWidget> {
                 height: loadingIndicatorSize,
                 child: CircularProgressIndicator(
                   strokeWidth: screenWidth * 0.005,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    context.nutritionPrimary,
-                  ),
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
                 ),
               ),
             ],
@@ -331,9 +379,7 @@ class _NutritionWidgetState extends State<NutritionWidget> {
             l10n.loadingNutritionData,
             style: TextStyle(
               fontSize: loadingFontSize,
-              color: (Theme.of(context).textTheme.bodyLarge?.color ??
-                      Colors.black87)
-                  .withOpacity(0.7),
+              color: isDark ? Colors.white60 : Colors.grey[600],
             ),
           ),
         ],
@@ -345,12 +391,12 @@ class _NutritionWidgetState extends State<NutritionWidget> {
     String label,
     String value,
     Color color,
-    Color? textColor,
+    bool isDark,
     double screenWidth,
   ) {
-    final dotSize = screenWidth * 0.01;
+    final dotSize = screenWidth * 0.012;
     final labelFontSize = screenWidth * 0.02;
-    final valueFontSize = screenWidth * 0.023;
+    final valueFontSize = screenWidth * 0.024;
     final dotSpacing = screenWidth * 0.005;
 
     return Flexible(
@@ -363,6 +409,13 @@ class _NutritionWidgetState extends State<NutritionWidget> {
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.5),
+                  blurRadius: 3,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
           ),
           SizedBox(width: dotSpacing),
@@ -375,15 +428,15 @@ class _NutritionWidgetState extends State<NutritionWidget> {
                     text: '$label: ',
                     style: TextStyle(
                       fontSize: labelFontSize,
-                      color: (textColor ?? Colors.black87).withOpacity(0.7),
+                      color: isDark ? Colors.white54 : Colors.grey[600],
                     ),
                   ),
                   TextSpan(
                     text: value,
                     style: TextStyle(
                       fontSize: valueFontSize,
-                      fontWeight: FontWeight.w600,
-                      color: textColor ?? Colors.black87,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.grey[800],
                     ),
                   ),
                 ],

@@ -7,7 +7,7 @@
   },
 
   "home": "Home",
-  "todayReport": "Today Report",
+  "todayReport": "Today's Report",
   "reportFor": "Report for {date}",
   "@reportFor": {
     "placeholders": {
@@ -131,6 +131,7 @@
   "selectLanguage": "Select Language",
   "english": "English",
   "hindi": "Hindi",
+  "marathi": "Marathi",
   "theme": "Theme",
   "darkMode": "Dark Mode",
   "lightMode": "Light Mode",
@@ -766,6 +767,9 @@
   "phone": "Phone",
   "address": "Address",
   "dateOfBirth": "Date of Birth",
+  "personalInformation": "Personal Information",
+  "physicalStats": "Physical Stats",
+  "yearsOld": "years old",
   "editProfile": "Edit Profile",
   "saveChanges": "Save Changes",
   "cancel": "Cancel",
@@ -949,7 +953,7 @@
   "themeChangedTo": "Theme changed to",
   "languageChangedTo": "Language changed to",
   "height": "Height",
-  "bmiLabel": "BMI",
+  "bmiLabel": "Body Mass Index (BMI)",
   "english": "English",
   "hindi": "हिंदी",
   "systemDefault": "System Default",

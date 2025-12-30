@@ -332,6 +332,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get hindi => 'हिंदी';
 
   @override
+  String get marathi => 'मराठी';
+
+  @override
   String get theme => 'थीम';
 
   @override
@@ -1581,6 +1584,15 @@ class AppLocalizationsHi extends AppLocalizations {
   String get dateOfBirth => 'जन्म तिथि';
 
   @override
+  String get personalInformation => 'व्यक्तिगत जानकारी';
+
+  @override
+  String get physicalStats => 'शारीरिक आंकड़े';
+
+  @override
+  String get yearsOld => 'वर्ष की आयु';
+
+  @override
   String get saveChanges => 'परिवर्तन सहेजें';
 
   @override
@@ -1979,7 +1991,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get languageChangedTo => 'भाषा बदलकर';
 
   @override
-  String get bmiLabel => 'बीएमआई';
+  String get bmiLabel => 'बॉडी मास इंडेक्स (बीएमआई)';
 
   @override
   String get systemDefault => 'सिस्टम डिफ़ॉल्ट';

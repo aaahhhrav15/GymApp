@@ -598,64 +598,11 @@ class _ResultScreenState extends State<ResultScreen>
               topLeft: Radius.circular(borderRadius),
               topRight: Radius.circular(borderRadius),
             ),
-            child: Stack(
-              children: [
-                _buildImageWidget(
-                  result.imageUrl,
-                  width: double.infinity,
-                  height: 300,
-                  fit: BoxFit.cover,
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: PopupMenuButton<String>(
-                    icon: Container(
-                      padding: EdgeInsets.all(screenWidth * 0.02),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surface
-                            .withOpacity(0.8),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .shadow
-                                .withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.more_vert,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        size: screenWidth * 0.05,
-                      ),
-                    ),
-                    onSelected: (value) {
-                      if (value == 'delete') {
-                        _showDeleteDialog(result.id);
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete,
-                                color: Theme.of(context).colorScheme.error),
-                            const SizedBox(width: 8),
-                            Text(AppLocalizations.of(context)!.delete),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            child: _buildImageWidget(
+              result.imageUrl,
+              width: double.infinity,
+              height: 300,
+              fit: BoxFit.cover,
             ),
           ),
           // Content

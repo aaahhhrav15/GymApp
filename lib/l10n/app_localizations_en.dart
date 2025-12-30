@@ -15,7 +15,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home => 'Home';
 
   @override
-  String get todayReport => 'Today Report';
+  String get todayReport => 'Today\'s Report';
 
   @override
   String reportFor(String date) {
@@ -330,6 +330,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hindi => 'हिंदी';
+
+  @override
+  String get marathi => 'Marathi';
 
   @override
   String get theme => 'Theme';
@@ -1578,6 +1581,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dateOfBirth => 'Date of Birth';
 
   @override
+  String get personalInformation => 'Personal Information';
+
+  @override
+  String get physicalStats => 'Physical Stats';
+
+  @override
+  String get yearsOld => 'years old';
+
+  @override
   String get saveChanges => 'Save Changes';
 
   @override
@@ -1975,7 +1987,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageChangedTo => 'Language changed to';
 
   @override
-  String get bmiLabel => 'BMI';
+  String get bmiLabel => 'Body Mass Index (BMI)';
 
   @override
   String get systemDefault => 'System Default';
