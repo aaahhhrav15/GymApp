@@ -2190,6 +2190,23 @@ class _MrMusclePageState extends State<MrMusclePage>
                         screenWidth,
                         theme,
                       ),
+
+                      SizedBox(height: screenWidth * 0.03),
+
+                      if (_getCurrentBmr() > 0) ...[
+                        _buildMeasurementCard(
+                          "BMR",
+                          "${_getCurrentBmr().toStringAsFixed(0)} kcal",
+                          "Basal Metabolic Rate - calories burned at rest",
+                          Icons.local_fire_department,
+                          _getCurrentBmr(),
+                          1200,
+                          2500,
+                          Colors.orange,
+                          screenWidth,
+                          theme,
+                        ),
+                      ],
                       SizedBox(height: screenWidth * 0.02),
                       Text(
                         lastData != null
@@ -4337,6 +4354,7 @@ class _MrMusclePageState extends State<MrMusclePage>
                       final weight = measurement['weight_kg'] as double;
                       final bodyFat = measurement['body_fat_percent'] as double;
                       final muscle = measurement['muscle_percent'] as double;
+                      final bmr = measurement['bmr'] as double? ?? 0.0;
 
                       return Container(
                         margin: EdgeInsets.only(bottom: screenWidth * 0.04),
@@ -4457,6 +4475,17 @@ class _MrMusclePageState extends State<MrMusclePage>
                                           screenWidth,
                                         ),
                                       ),
+                                      if (bmr > 0) ...[
+                                        SizedBox(width: screenWidth * 0.025),
+                                        Expanded(
+                                          child: _buildHistoryChip(
+                                            "BMR",
+                                            "${bmr.toStringAsFixed(0)} kcal",
+                                            theme,
+                                            screenWidth,
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ],

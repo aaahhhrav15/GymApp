@@ -122,10 +122,10 @@ import UserNotifications
       case "isLocationEnabled":
         self.checkLocationEnabled(result: result)
       case "startStepCounterService":
-        self?.startBackgroundStepTracking()
+        self.startBackgroundStepTracking()
         result(true)
       case "stopStepCounterService":
-        self?.stopBackgroundStepTracking()
+        self.stopBackgroundStepTracking()
         result(true)
       default:
         result(FlutterMethodNotImplemented)

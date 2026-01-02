@@ -10,6 +10,7 @@ import '../l10n/app_localizations.dart';
 import 'edit_profile_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -20,6 +21,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoggingOut = false;
+  double _bmr = 0.0;
 
   @override
   void initState() {
@@ -29,7 +31,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await profileProvider.fetchUserProfile();
       debugPrint(
           'ProfileScreen: Profile loaded - Status: ${profileProvider.syncStatus}');
+      await _loadBmr();
     });
+  }
+
+  Future<void> _loadBmr() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bmr = prefs.getDouble('last_bmr') ?? 0.0;
+      if (mounted) {
+        setState(() {
+          _bmr = bmr;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading BMR: $e');
+    }
   }
 
   @override
@@ -58,6 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return RefreshIndicator(
             onRefresh: () async {
               await profileProvider.syncWithBackend();
+              await _loadBmr();
             },
             child: CustomScrollView(
               slivers: [
@@ -584,19 +602,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
 
-          // Age and BMI Row at the bottom
+          // BMR and BMI Row at the bottom
           SizedBox(height: screenHeight * 0.02),
           Row(
             children: [
-              // Age
+              // BMR
               Expanded(
                 child: _buildStatCard(
-                  icon: Icons.calendar_today_outlined,
-                  label: "Age",
-                  value: userProfile.birthday != null
-                      ? '${_calculateAge(userProfile.birthday!)} ${l10n.yearsOld}'
+                  icon: Icons.local_fire_department,
+                  label: "BMR",
+                  value: _bmr > 0
+                      ? '${_bmr.toStringAsFixed(0)} kcal'
                       : l10n.notSet,
-                  color: Colors.purple,
+                  color: Colors.orange,
                 ),
               ),
               SizedBox(width: screenWidth * 0.03),
