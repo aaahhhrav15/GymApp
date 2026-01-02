@@ -21,7 +21,8 @@ plugins {
 android {
     namespace = "com.mait.gym_attendance"
     compileSdk = 36
-    ndkVersion = "27.0.12077973"
+    // NDK 28+ required for 16KB page size support
+    ndkVersion = "28.0.12674087"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -40,8 +41,8 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = 36
-        versionCode = 21
-        versionName = "2.0.1"
+        versionCode = 40
+        versionName = "2.0.4"
         
         // Support for 16KB page sizes (Android 15 requirement)
         ndk {
@@ -54,7 +55,7 @@ android {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String?
             keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+            storeFile = keystoreProperties["storeFile"]?.let { rootProject.file(it) }
             storePassword = keystoreProperties["storePassword"] as String?
         }
     }
