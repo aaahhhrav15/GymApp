@@ -29,6 +29,7 @@ class StepsService {
   Timer? _periodicSyncTimer;
   Timer? _healthCheckTimer;
   Timer? _periodicDatabaseSaveTimer;
+  Timer? _preMidnightSaveTimer;
 
   // Core data - simplified
   int _dailySteps = 0;
@@ -181,22 +182,21 @@ class StepsService {
   }
 
   // Periodic sync with SharedPreferences (updated by background service)
-  // Sync every 10 seconds - optimal balance between responsiveness and battery efficiency
-  // Since all processing is local (SharedPreferences/database), 10 seconds is sufficient
+  // CRITICAL FIX: Reduced to 5 seconds for better responsiveness and to prevent notification/app mismatch
+  // This ensures notifications and app show the same data more quickly
   void _startPeriodicSync() {
     _periodicSyncTimer?.cancel();
-    _periodicSyncTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+    _periodicSyncTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       if (!_isUpdating) {
         await _syncWithBackgroundService();
       }
     });
     
     // Also add a periodic database save to ensure data persistence
-    // This ensures steps are saved even if the app closes unexpectedly
     // CRITICAL: Save more frequently to prevent data loss when app is killed
-    // Save every 15 seconds to minimize data loss window
+    // Save every 10 seconds to minimize data loss window
     _periodicDatabaseSaveTimer?.cancel();
-    _periodicDatabaseSaveTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
+    _periodicDatabaseSaveTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
       if (!_isUpdating) {
         try {
           // Always save, even if 0 steps, to ensure the date entry exists
@@ -212,6 +212,101 @@ class StepsService {
         }
       }
     });
+    
+    // CRITICAL FIX: Pre-midnight save mechanism
+    // Save steps at 11:58 PM to capture final count before day change
+    // This prevents losing steps when background service resets at midnight
+    _preMidnightSaveTimer?.cancel();
+    _startPreMidnightSave();
+  }
+  
+  // CRITICAL FIX: Pre-midnight save to capture yesterday's steps before day change
+  // This runs at 11:58 PM every day to save final step count before background service resets
+  void _startPreMidnightSave() {
+    _preMidnightSaveTimer?.cancel();
+    
+    // Calculate time until 11:58 PM today
+    final now = DateTime.now();
+    final targetTime = DateTime(now.year, now.month, now.day, 23, 58, 0);
+    
+    Duration delay;
+    if (now.isBefore(targetTime)) {
+      // Today's 11:58 PM hasn't passed yet
+      delay = targetTime.difference(now);
+    } else {
+      // Today's 11:58 PM has passed, schedule for tomorrow
+      delay = targetTime.add(const Duration(days: 1)).difference(now);
+    }
+    
+    _preMidnightSaveTimer = Timer(delay, () {
+      _performPreMidnightSave();
+      // Schedule for next day
+      _preMidnightSaveTimer = Timer.periodic(const Duration(days: 1), (timer) {
+        _performPreMidnightSave();
+      });
+    });
+    
+    print('Scheduled pre-midnight save in ${delay.inMinutes} minutes');
+  }
+  
+  // CRITICAL FIX: Save final steps before midnight to prevent data loss
+  Future<void> _performPreMidnightSave() async {
+    try {
+      print('CRITICAL: Pre-midnight save - capturing final steps before day change');
+      
+      // Get the latest steps from SharedPreferences (background service may have updated)
+      final prefs = await SharedPreferences.getInstance();
+      final latestSteps = prefs.getInt(_dailyStepsKey) ?? _dailySteps;
+      final currentDate = prefs.getString(_dateKey) ?? _currentDate;
+      
+      // Use the higher value to ensure we don't lose steps
+      final finalSteps = math.max(_dailySteps, latestSteps);
+      
+      print('Pre-midnight save: Saving $finalSteps steps for $currentDate');
+      
+      // CRITICAL: Save to database with retry logic
+      int retries = 5;
+      bool saved = false;
+      while (retries > 0 && !saved) {
+        try {
+          await StepsDatabase.insertOrUpdateDailySteps(currentDate, finalSteps);
+          final dayName = _getDayAbbreviation(DateTime.parse(currentDate).weekday);
+          await StepsDatabase.insertOrUpdateSteps(dayName, finalSteps);
+          
+          // Also update SharedPreferences to ensure background service sees this value
+          await prefs.setInt(_dailyStepsKey, finalSteps);
+          await prefs.setString(_dateKey, currentDate);
+          
+          // Mark that we saved before midnight
+          await prefs.setString('pre_midnight_save_time', DateTime.now().toIso8601String());
+          await prefs.setInt('pre_midnight_saved_steps', finalSteps);
+          await prefs.setString('pre_midnight_saved_date', currentDate);
+          
+          _dailySteps = finalSteps;
+          _currentDate = currentDate;
+          
+          saved = true;
+          print('CRITICAL: Pre-midnight save successful: $finalSteps steps for $currentDate');
+        } catch (e) {
+          retries--;
+          if (retries > 0) {
+            print('Pre-midnight save failed, retrying... ($retries left): $e');
+            await Future.delayed(Duration(milliseconds: 500));
+          } else {
+            print('CRITICAL ERROR: Pre-midnight save failed after retries: $e');
+            // Save to SharedPreferences as backup
+            try {
+              await prefs.setInt('${_dailyStepsKey}_pre_midnight_backup', finalSteps);
+              await prefs.setString('${_dateKey}_pre_midnight_backup', currentDate);
+            } catch (backupError) {
+              print('CRITICAL: Failed to save pre-midnight backup: $backupError');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error in pre-midnight save: $e');
+    }
   }
   
   // Health check monitoring for background service
@@ -274,6 +369,7 @@ class StepsService {
   }
 
   // Sync with background service data
+  // CRITICAL FIX: Improved sync to prevent data loss and notification/app mismatch
   Future<void> _syncWithBackgroundService() async {
     if (_isUpdating) return; // Prevent concurrent updates
     
@@ -282,6 +378,35 @@ class StepsService {
       final prefs = await SharedPreferences.getInstance();
       var backgroundSteps = prefs.getInt(_dailyStepsKey) ?? _dailySteps;
       var backgroundDate = prefs.getString(_dateKey) ?? _currentDate;
+
+      // CRITICAL FIX: Check for pre-midnight saved steps (backup from yesterday)
+      // This recovers steps that were saved before midnight but lost during day change
+      try {
+        final preMidnightDate = prefs.getString('pre_midnight_saved_date');
+        final preMidnightSteps = prefs.getInt('pre_midnight_saved_steps');
+        if (preMidnightDate != null && preMidnightSteps != null && 
+            preMidnightDate != backgroundDate && preMidnightDate == _currentDate) {
+          // We have pre-midnight saved steps for yesterday that need to be recovered
+          print('RECOVERY: Found pre-midnight saved steps: $preMidnightSteps for $preMidnightDate');
+          try {
+            final dbData = await StepsDatabase.getDailySteps(preMidnightDate);
+            final dbSteps = dbData?['total_steps'] as int? ?? 0;
+            if (preMidnightSteps > dbSteps) {
+              await StepsDatabase.insertOrUpdateDailySteps(preMidnightDate, preMidnightSteps);
+              final dayName = _getDayAbbreviation(DateTime.parse(preMidnightDate).weekday);
+              await StepsDatabase.insertOrUpdateSteps(dayName, preMidnightSteps);
+              print('RECOVERY: Restored pre-midnight steps to database: $preMidnightSteps');
+            }
+            // Clear the backup after recovery
+            await prefs.remove('pre_midnight_saved_steps');
+            await prefs.remove('pre_midnight_saved_date');
+          } catch (e) {
+            print('Error recovering pre-midnight steps: $e');
+          }
+        }
+      } catch (e) {
+        print('Error checking pre-midnight backup: $e');
+      }
 
       // Validate background data before using it
       if (backgroundSteps < 0) {
@@ -303,12 +428,11 @@ class StepsService {
       await prefs.setString('${_dateKey}_last_update', DateTime.now().toIso8601String());
 
       // Check for day change (with timezone awareness)
-      // CRITICAL: Handle day change BEFORE updating steps to prevent losing yesterday's data
+      // CRITICAL FIX: Handle day change BEFORE updating steps to prevent losing yesterday's data
       if (backgroundDate != _currentDate && backgroundDate.isNotEmpty) {
         print('Day change detected in sync: $_currentDate -> $backgroundDate');
         
-        // CRITICAL: Get the best value for yesterday's steps
-        // Try to get from database first (might have been saved earlier)
+        // CRITICAL FIX: Get the best value for yesterday's steps from multiple sources
         int yesterdaySteps = _dailySteps;
         String yesterdayDate = _currentDate;
         
@@ -320,6 +444,20 @@ class StepsService {
           yesterdayDate = '${fallbackDate.year}-${fallbackDate.month.toString().padLeft(2, '0')}-${fallbackDate.day.toString().padLeft(2, '0')}';
         }
         
+        // CRITICAL FIX: Check multiple sources for yesterday's steps
+        // 1. Pre-midnight backup (most reliable)
+        try {
+          final preMidnightDate = prefs.getString('pre_midnight_saved_date');
+          final preMidnightSteps = prefs.getInt('pre_midnight_saved_steps');
+          if (preMidnightDate == yesterdayDate && preMidnightSteps != null) {
+            yesterdaySteps = math.max(yesterdaySteps, preMidnightSteps);
+            print('Using pre-midnight saved steps: $preMidnightSteps');
+          }
+        } catch (e) {
+          print('Error reading pre-midnight backup: $e');
+        }
+        
+        // 2. Database (might have been saved earlier)
         try {
           final dbData = await StepsDatabase.getDailySteps(yesterdayDate);
           if (dbData != null && dbData['total_steps'] != null) {
@@ -332,6 +470,18 @@ class StepsService {
           print('Could not load yesterday from database: $e');
         }
         
+        // 3. SharedPreferences backup
+        try {
+          final backupSteps = prefs.getInt('${_dailyStepsKey}_yesterday');
+          final backupDate = prefs.getString('${_dateKey}_yesterday');
+          if (backupDate == yesterdayDate && backupSteps != null) {
+            yesterdaySteps = math.max(yesterdaySteps, backupSteps);
+            print('Using SharedPreferences backup: $backupSteps');
+          }
+        } catch (e) {
+          print('Error reading SharedPreferences backup: $e');
+        }
+        
         // EDGE CASE: Validate yesterday's steps before saving
         if (yesterdaySteps < 0) {
           print('WARNING: Negative yesterday steps: $yesterdaySteps, setting to 0');
@@ -342,10 +492,10 @@ class StepsService {
           yesterdaySteps = 100000;
         }
         
-        print('Saving yesterday\'s steps: $yesterdaySteps for date: $yesterdayDate');
+        print('CRITICAL: Saving yesterday\'s steps: $yesterdaySteps for date: $yesterdayDate');
         
         // Force save yesterday's steps to database immediately with retry logic
-        int saveRetries = 3;
+        int saveRetries = 5;
         bool saveSuccess = false;
         while (saveRetries > 0 && !saveSuccess) {
           try {
@@ -363,7 +513,7 @@ class StepsService {
             saveRetries--;
             if (saveRetries > 0) {
               print('CRITICAL ERROR: Failed to save yesterday\'s steps (retrying): $e');
-              await Future.delayed(Duration(milliseconds: 200));
+              await Future.delayed(Duration(milliseconds: 500));
             } else {
               print('CRITICAL ERROR: Failed to save yesterday\'s steps after retries: $e');
               // Save to SharedPreferences as last resort
@@ -386,45 +536,48 @@ class StepsService {
         _dailySteps = backgroundSteps;
         _currentDate = backgroundDate;
         
-        // Save today's initial value (might be 0)
+        // CRITICAL FIX: Immediately sync to database to prevent notification/app mismatch
         await _saveToDatabase();
         
         _stepsController.add(_dailySteps);
         return; // Exit early after day change to prevent double processing
       }
 
-      // Only update if we have new data (normal sync, no day change)
-      if (backgroundSteps != _dailySteps || backgroundDate != _currentDate) {
-        final oldSteps = _dailySteps;
-        
-        // EDGE CASE: Handle steps going backwards (should never happen, but handle gracefully)
-        if (backgroundSteps < _dailySteps) {
-          print('WARNING: Steps decreased from $_dailySteps to $backgroundSteps');
-          print('This may indicate device reset or data corruption. Keeping higher value.');
-          // Keep the higher value to prevent data loss
-          backgroundSteps = _dailySteps;
-        }
-        
-        final stepIncrement = backgroundSteps > _dailySteps 
-            ? backgroundSteps - _dailySteps 
-            : 0;
+      // CRITICAL FIX: Always sync to ensure database and SharedPreferences match
+      // This prevents notification/app mismatch
+      final oldSteps = _dailySteps;
+      
+      // Use the higher value to prevent data loss
+      final finalSteps = math.max(_dailySteps, backgroundSteps);
+      
+      // EDGE CASE: Handle steps going backwards (should never happen, but handle gracefully)
+      if (backgroundSteps < _dailySteps && _dailySteps > 0) {
+        print('WARNING: Steps decreased from $_dailySteps to $backgroundSteps');
+        print('This may indicate device reset or data corruption. Keeping higher value.');
+        // Keep the higher value to prevent data loss
+      }
+      
+      final stepIncrement = finalSteps > _dailySteps 
+          ? finalSteps - _dailySteps 
+          : 0;
 
-        // Validate step increment is reasonable (max 5000 steps in 10 seconds)
-        if (stepIncrement > 5000) {
-          print('WARNING: Unusually large step increment in sync: $stepIncrement');
-          print('This may indicate data corruption. Capping increment to 5000.');
-          // Cap the increment to prevent corruption
-          backgroundSteps = _dailySteps + 5000;
-        }
+      // Validate step increment is reasonable (max 5000 steps in 5 seconds)
+      if (stepIncrement > 5000) {
+        print('WARNING: Unusually large step increment in sync: $stepIncrement');
+        print('This may indicate data corruption. Capping increment to 5000.');
+        // Cap the increment to prevent corruption
+        finalSteps = _dailySteps + 5000;
+      }
 
-        _dailySteps = backgroundSteps;
+      // CRITICAL FIX: Always update and save to keep database and SharedPreferences in sync
+      // This ensures notifications and app show the same data
+      if (finalSteps != _dailySteps || backgroundDate != _currentDate) {
+        _dailySteps = finalSteps;
         _currentDate = backgroundDate;
 
         // Always save to database when steps change to prevent data loss
         // This ensures no steps are lost even if app closes unexpectedly
-        if (stepIncrement > 0) {
-          await _saveToDatabase();
-        }
+        await _saveToDatabase();
 
         _stepsController.add(_dailySteps);
 
@@ -523,6 +676,7 @@ class StepsService {
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
+  // CRITICAL FIX: Improved day change detection with pre-midnight backup recovery
   Future<void> _checkForNewDay() async {
     final today = _getTodayString();
     final todayUTC = _getTodayStringUTC();
@@ -539,7 +693,7 @@ class StepsService {
       print('New day detected: $today (was: $_currentDate, UTC: $todayUTC)');
 
       try {
-        // Always save yesterday's data to database, even if 0 steps
+        // CRITICAL FIX: Always save yesterday's data to database, even if 0 steps
         // This ensures all days have entries in the database
         if (_currentDate.isNotEmpty) {
           try {
@@ -554,17 +708,52 @@ class StepsService {
             
             final dayName = _getDayAbbreviation(yesterday.weekday);
             
+            // CRITICAL FIX: Check for pre-midnight saved steps first (most reliable)
+            final prefs = await SharedPreferences.getInstance();
+            int finalYesterdaySteps = _dailySteps;
+            
+            try {
+              final preMidnightDate = prefs.getString('pre_midnight_saved_date');
+              final preMidnightSteps = prefs.getInt('pre_midnight_saved_steps');
+              if (preMidnightDate == _currentDate && preMidnightSteps != null) {
+                finalYesterdaySteps = math.max(finalYesterdaySteps, preMidnightSteps);
+                print('Using pre-midnight saved steps for yesterday: $preMidnightSteps');
+              }
+            } catch (e) {
+              print('Error reading pre-midnight backup: $e');
+            }
+            
+            // Also check database for any existing value
+            try {
+              final dbData = await StepsDatabase.getDailySteps(_currentDate);
+              if (dbData != null && dbData['total_steps'] != null) {
+                final dbSteps = dbData['total_steps'] as int;
+                finalYesterdaySteps = math.max(finalYesterdaySteps, dbSteps);
+                print('Found existing steps in database: $dbSteps');
+              }
+            } catch (e) {
+              print('Error reading from database: $e');
+            }
+            
             // Save to daily history table using the stored date
             // Always save, even with 0 steps, to ensure the date entry exists
             await StepsDatabase.insertOrUpdateDailySteps(
               _currentDate,
-              _dailySteps,
+              finalYesterdaySteps,
             );
             
             // Also save to weekly table for backward compatibility
-            await StepsDatabase.insertOrUpdateSteps(dayName, _dailySteps);
+            await StepsDatabase.insertOrUpdateSteps(dayName, finalYesterdaySteps);
 
-            print('Saved yesterday\'s steps: $dayName = $_dailySteps for date: $_currentDate');
+            print('CRITICAL: Saved yesterday\'s steps: $dayName = $finalYesterdaySteps for date: $_currentDate');
+            
+            // Clear pre-midnight backup after successful save
+            try {
+              await prefs.remove('pre_midnight_saved_steps');
+              await prefs.remove('pre_midnight_saved_date');
+            } catch (e) {
+              print('Error clearing pre-midnight backup: $e');
+            }
           } catch (e) {
             print('Error saving yesterday\'s steps: $e');
             // Continue with day change even if save fails
@@ -1440,35 +1629,59 @@ class StepsService {
     }
   }
 
-  // Save stored data - Single Source of Truth pattern
+  // CRITICAL FIX: Save stored data - Single Source of Truth pattern
   // Database is primary, SharedPreferences is cache for background service and notifications
+  // This method ensures database and SharedPreferences stay in sync to prevent notification/app mismatch
   Future<void> _saveStoredData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final today = _getTodayString();
 
-      // Save to database first (single source of truth)
-      try {
-        await StepsDatabase.insertOrUpdateDailySteps(
-          today,
-          _dailySteps,
-        );
-        // Also update weekly table for backward compatibility
-        final todayDayName = _getDayAbbreviation(DateTime.now().weekday);
-        await StepsDatabase.insertOrUpdateSteps(todayDayName, _dailySteps);
-      } catch (e) {
-        print('Warning: Could not save to database, using SharedPreferences only: $e');
+      // CRITICAL FIX: Save to database first (single source of truth) with retry logic
+      int dbRetries = 3;
+      bool dbSaved = false;
+      while (dbRetries > 0 && !dbSaved) {
+        try {
+          await StepsDatabase.insertOrUpdateDailySteps(
+            today,
+            _dailySteps,
+          );
+          // Also update weekly table for backward compatibility
+          final todayDayName = _getDayAbbreviation(DateTime.now().weekday);
+          await StepsDatabase.insertOrUpdateSteps(todayDayName, _dailySteps);
+          dbSaved = true;
+        } catch (e) {
+          dbRetries--;
+          if (dbRetries > 0) {
+            print('Warning: Could not save to database (retrying): $e');
+            await Future.delayed(Duration(milliseconds: 200));
+          } else {
+            print('Warning: Could not save to database after retries, using SharedPreferences only: $e');
+          }
+        }
       }
 
-      // Also save to SharedPreferences as cache (for background service and notifications)
+      // CRITICAL FIX: Always save to SharedPreferences as cache (for background service and notifications)
       // This ensures notifications read the same value as the steps page
-      await prefs.setInt(_dailyStepsKey, _dailySteps);
-      await prefs.setInt(_goalKey, _dailyGoal);
-      await prefs.setInt(_deviceStepsKey, _deviceStepsAtMidnight);
-      await prefs.setString(_dateKey, _currentDate);
-      
-      // Update last sync time for health check
-      await prefs.setString('${_dateKey}_last_update', DateTime.now().toIso8601String());
+      // Use atomic operations to prevent corruption
+      try {
+        await prefs.setInt(_dailyStepsKey, _dailySteps);
+        await prefs.setInt(_goalKey, _dailyGoal);
+        await prefs.setInt(_deviceStepsKey, _deviceStepsAtMidnight);
+        await prefs.setString(_dateKey, _currentDate);
+        
+        // Update last sync time for health check
+        await prefs.setString('${_dateKey}_last_update', DateTime.now().toIso8601String());
+      } catch (e) {
+        print('Error saving to SharedPreferences: $e');
+        // Try to clear corrupted data
+        try {
+          await prefs.remove(_dailyStepsKey);
+          await prefs.setInt(_dailyStepsKey, _dailySteps);
+        } catch (clearError) {
+          print('Error clearing corrupted SharedPreferences: $clearError');
+        }
+      }
       
       print('Saved stored data: $_dailySteps steps for $_currentDate (goal: $_dailyGoal)');
     } catch (e) {
@@ -1570,22 +1783,29 @@ class StepsService {
     }
   }
 
-  // Simple sync method for app resume
+  // CRITICAL FIX: Improved sync method for app resume
   // Called when app comes back to foreground after being closed
+  // This ensures immediate sync to prevent notification/app mismatch
   Future<void> syncOnAppResume() async {
     try {
-      print('Syncing steps on app resume...');
+      print('CRITICAL: Syncing steps on app resume...');
       print('Background service was tracking steps while app was closed.');
       
-      // Check for day change first
+      // CRITICAL: Check for day change first and recover any lost data
       await _checkForNewDay();
       
-      // Force sync latest data from background service
-      // Background service updates SharedPreferences, we sync it here
+      // CRITICAL FIX: Force immediate sync to prevent notification/app mismatch
+      // Sync with background service first to get latest data
+      await _syncWithBackgroundService();
+      
+      // Then force sync from SharedPreferences to ensure database is updated
       await forceSyncFromSharedPreferences();
       
-      // Also sync with background service to ensure we have the absolute latest
+      // Final sync to ensure everything is in sync
       await _syncWithBackgroundService();
+      
+      // CRITICAL: Save immediately to database to ensure persistence
+      await _saveToDatabase();
       
       print('App resume sync completed - Current steps: $_dailySteps');
       print('Steps tracked while app was closed have been synced.');
@@ -1717,6 +1937,7 @@ class StepsService {
     _periodicSyncTimer?.cancel();
     _healthCheckTimer?.cancel();
     _periodicDatabaseSaveTimer?.cancel();
+    _preMidnightSaveTimer?.cancel();
     _stepCountStream?.cancel();
     _pedestrianStatusStream?.cancel();
     _stepsController.close();
