@@ -135,15 +135,17 @@ class StepsProvider extends ChangeNotifier {
     }
   }
 
-  // Get hourly steps data
-  Future<List<int>> getHourlySteps([String? day]) async {
+  // Get steps for a 7-day period (offset: 0 = today-6, 1 = today-13, etc.)
+  // Returns a map with date strings as keys and step counts as values
+  Future<Map<String, int>> getStepsFor7DayPeriod(int offset, {int? todaySteps}) async {
     try {
-      return await _stepsService.getHourlySteps(day);
+      return await _stepsService.getStepsFor7DayPeriod(offset, todaySteps: todaySteps ?? _currentSteps);
     } catch (e) {
-      print('Error getting hourly steps: $e');
-      return List.filled(24, 0);
+      print('Error getting 7-day period steps: $e');
+      return {};
     }
   }
+
 
   // Get tracking status for debugging
   Map<String, dynamic> getTrackingStatus() {

@@ -91,43 +91,53 @@ class StepsDatabase {
 
   // Check if we need to reset for new week
   static Future<void> checkAndResetWeek() async {
-    final db = await database;
-    String currentWeekStart = _getCurrentWeekStart();
+    try {
+      final db = await database;
+      String currentWeekStart = _getCurrentWeekStart();
 
-    // Check if we have data for current week
-    List<Map<String, dynamic>> result = await db.query(
-      _tableName,
-      where: 'week_start_date = ?',
-      whereArgs: [currentWeekStart],
-      limit: 1,
-    );
+      // Check if we have data for current week
+      List<Map<String, dynamic>> result = await db.query(
+        _tableName,
+        where: 'week_start_date = ?',
+        whereArgs: [currentWeekStart],
+        limit: 1,
+      );
 
-    // If no data for current week, delete old week data
-    if (result.isEmpty) {
-      await db.delete(_tableName);
-      print(
-          'Cleared old week data, starting fresh week from $currentWeekStart');
+      // If no data for current week, delete old week data
+      if (result.isEmpty) {
+        await db.delete(_tableName);
+        print(
+            'Cleared old week data, starting fresh week from $currentWeekStart');
+      }
+    } catch (e) {
+      print('Error checking/resetting week: $e');
+      // Don't rethrow - this is not critical for app operation
     }
   }
 
   // Insert or update step count for a day
   static Future<void> insertOrUpdateSteps(String dayName, int stepCount) async {
-    final db = await database;
-    String currentWeekStart = _getCurrentWeekStart();
-    String currentTime = DateTime.now().toIso8601String();
+    try {
+      final db = await database;
+      String currentWeekStart = _getCurrentWeekStart();
+      String currentTime = DateTime.now().toIso8601String();
 
-    await db.insert(
-      _tableName,
-      {
-        'day_name': dayName,
-        'step_count': stepCount,
-        'week_start_date': currentWeekStart,
-        'created_at': currentTime,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+      await db.insert(
+        _tableName,
+        {
+          'day_name': dayName,
+          'step_count': stepCount,
+          'week_start_date': currentWeekStart,
+          'created_at': currentTime,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
 
-    print('Saved steps for $dayName: $stepCount');
+      print('Saved steps for $dayName: $stepCount');
+    } catch (e) {
+      print('Error inserting/updating steps for $dayName: $e');
+      rethrow; // Re-throw to allow retry logic in service
+    }
   }
 
   // Get step count for a specific day
@@ -204,28 +214,33 @@ class StepsDatabase {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  // Insert or update daily steps with hourly breakdown
+  // Insert or update daily steps
   static Future<void> insertOrUpdateDailySteps(
     String date,
-    int totalSteps,
-    List<int> hourlySteps,
-  ) async {
-    final db = await database;
-    final now = DateTime.now().toIso8601String();
+    int totalSteps, [
+    List<int>? hourlySteps,
+  ]) async {
+    try {
+      final db = await database;
+      final now = DateTime.now().toIso8601String();
 
-    await db.insert(
-      _dailyHistoryTableName,
-      {
-        'date': date,
-        'total_steps': totalSteps,
-        'hourly_steps': jsonEncode(hourlySteps),
-        'created_at': now,
-        'updated_at': now,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+      await db.insert(
+        _dailyHistoryTableName,
+        {
+          'date': date,
+          'total_steps': totalSteps,
+          'hourly_steps': jsonEncode(hourlySteps ?? []),
+          'created_at': now,
+          'updated_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
 
-    print('Saved daily steps for $date: $totalSteps steps');
+      print('Saved daily steps for $date: $totalSteps steps');
+    } catch (e) {
+      print('Error inserting/updating daily steps for $date: $e');
+      rethrow; // Re-throw to allow retry logic in service
+    }
   }
 
   // Get daily steps for a specific date
@@ -287,19 +302,24 @@ class StepsDatabase {
 
   // Maintain 30-day history - remove oldest entries beyond 30 days
   static Future<void> maintain30DayHistory() async {
-    final db = await database;
-    final today = DateTime.now();
-    final thirtyDaysAgo = today.subtract(const Duration(days: 30));
+    try {
+      final db = await database;
+      final today = DateTime.now();
+      final thirtyDaysAgo = today.subtract(const Duration(days: 30));
 
-    // Delete entries older than 30 days
-    final deleted = await db.delete(
-      _dailyHistoryTableName,
-      where: 'date < ?',
-      whereArgs: [_getDateString(thirtyDaysAgo)],
-    );
+      // Delete entries older than 30 days
+      final deleted = await db.delete(
+        _dailyHistoryTableName,
+        where: 'date < ?',
+        whereArgs: [_getDateString(thirtyDaysAgo)],
+      );
 
-    if (deleted > 0) {
-      print('Removed $deleted old entries from daily history (keeping last 30 days)');
+      if (deleted > 0) {
+        print('Removed $deleted old entries from daily history (keeping last 30 days)');
+      }
+    } catch (e) {
+      print('Error maintaining 30-day history: $e');
+      // Don't rethrow - this is maintenance operation, not critical
     }
   }
 
@@ -373,5 +393,48 @@ class StepsDatabase {
       'total_steps': 0,
       'hourly_steps': List.filled(24, 0),
     };
+  }
+
+  // Get steps for a 7-day period (offset: 0 = today-6, 1 = today-13, etc.)
+  // Returns a map with date strings as keys and step counts as values
+  static Future<Map<String, int>> getStepsFor7DayPeriod(int offset) async {
+    final db = await database;
+    final today = DateTime.now();
+    
+    // Calculate start and end dates for this 7-day period
+    // Offset 0: today to 6 days ago (last 7 days including today)
+    // Offset 1: 7 to 13 days ago
+    // Offset 2: 14 to 20 days ago
+    // Offset 3: 21 to 27 days ago
+    final endDate = today.subtract(Duration(days: offset * 7));
+    final startDate = endDate.subtract(const Duration(days: 6));
+
+    final startDateStr = _getDateString(startDate);
+    final endDateStr = _getDateString(endDate);
+
+    List<Map<String, dynamic>> result = await db.query(
+      _dailyHistoryTableName,
+      where: 'date >= ? AND date <= ?',
+      whereArgs: [startDateStr, endDateStr],
+      orderBy: 'date ASC',
+    );
+
+    // Create a map with all dates in the range initialized to 0
+    Map<String, int> stepsMap = {};
+    DateTime currentDate = startDate;
+    while (currentDate.isBefore(endDate) || currentDate.isAtSameMomentAs(endDate)) {
+      final dateStr = _getDateString(currentDate);
+      stepsMap[dateStr] = 0;
+      currentDate = currentDate.add(const Duration(days: 1));
+    }
+
+    // Fill in the actual step counts from database
+    for (var row in result) {
+      final dateStr = row['date'] as String;
+      final stepCount = row['total_steps'] as int;
+      stepsMap[dateStr] = stepCount;
+    }
+
+    return stepsMap;
   }
 }

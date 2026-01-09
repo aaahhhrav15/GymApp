@@ -229,7 +229,7 @@ abstract class AppLocalizations {
   /// No description provided for @stepsRemaining.
   ///
   /// In en, this message translates to:
-  /// **'steps remaining'**
+  /// **'Steps Remaining'**
   String get stepsRemaining;
 
   /// No description provided for @goalAchieved.
@@ -271,7 +271,7 @@ abstract class AppLocalizations {
   /// No description provided for @waterIntake.
   ///
   /// In en, this message translates to:
-  /// **'water intake'**
+  /// **'Water Intake'**
   String get waterIntake;
 
   /// No description provided for @glasses.
@@ -1177,7 +1177,7 @@ abstract class AppLocalizations {
   /// No description provided for @remaining.
   ///
   /// In en, this message translates to:
-  /// **'remaining'**
+  /// **'Remaining'**
   String get remaining;
 
   /// No description provided for @quickAdd.

@@ -4,6 +4,7 @@ import CoreLocation
 import CoreBluetooth
 import CoreMotion
 import UserNotifications
+import HealthKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, CLLocationManagerDelegate, CBPeripheralManagerDelegate {
@@ -13,6 +14,12 @@ import UserNotifications
   private var pedometer: CMPedometer?
   private var stepUpdateTimer: Timer?
   private var lastStepCount: Int = 0
+  
+  // HealthKit
+  private var healthStore: HKHealthStore?
+  private var stepCountType: HKQuantityType?
+  private var healthKitObserverQuery: HKObserverQuery?
+  private var isHealthKitAuthorized = false
   
   override func application(
     _ application: UIApplication,
@@ -29,6 +36,9 @@ import UserNotifications
       self?.setupHelperChannel()
       self?.setupStepTrackingChannel()
     }
+    
+    // Initialize HealthKit
+    initializeHealthKit()
     
     // Start step tracking in background
     startBackgroundStepTracking()
@@ -291,6 +301,195 @@ import UserNotifications
     }
   }
 
+  // MARK: - HealthKit Integration
+  
+  private func initializeHealthKit() {
+    // Check if HealthKit is available on this device
+    guard HKHealthStore.isHealthDataAvailable() else {
+      print("❌ HealthKit is not available on this device")
+      return
+    }
+    
+    healthStore = HKHealthStore()
+    stepCountType = HKQuantityType.quantityType(forIdentifier: .stepCount)
+    
+    guard let stepCountType = stepCountType else {
+      print("❌ Could not create step count quantity type")
+      return
+    }
+    
+    // Request authorization
+    let readTypes: Set<HKObjectType> = [stepCountType]
+    
+    healthStore?.requestAuthorization(toShare: nil, read: readTypes) { [weak self] success, error in
+      DispatchQueue.main.async {
+        if let error = error {
+          print("❌ HealthKit authorization error: \(error.localizedDescription)")
+          self?.isHealthKitAuthorized = false
+        } else if success {
+          print("✅ HealthKit authorization granted")
+          self?.isHealthKitAuthorized = true
+          // Set up background delivery
+          self?.setupHealthKitBackgroundDelivery()
+          // Get initial step count
+          self?.getStepsFromHealthKit()
+        } else {
+          print("❌ HealthKit authorization denied")
+          self?.isHealthKitAuthorized = false
+        }
+      }
+    }
+  }
+  
+  private func setupHealthKitBackgroundDelivery() {
+    guard let healthStore = healthStore,
+          let stepCountType = stepCountType,
+          isHealthKitAuthorized else {
+      print("❌ Cannot set up HealthKit background delivery - not authorized")
+      return
+    }
+    
+    // Enable background delivery
+    healthStore.enableBackgroundDelivery(for: stepCountType, frequency: .immediate) { success, error in
+      if let error = error {
+        print("❌ Error enabling HealthKit background delivery: \(error.localizedDescription)")
+      } else if success {
+        print("✅ HealthKit background delivery enabled")
+      }
+    }
+    
+    // Set up observer query for real-time updates
+    healthKitObserverQuery = HKObserverQuery(sampleType: stepCountType, predicate: nil) { [weak self] query, completionHandler, error in
+      if let error = error {
+        print("❌ HealthKit observer query error: \(error.localizedDescription)")
+        completionHandler()
+        return
+      }
+      
+      // Get updated step count
+      self?.getStepsFromHealthKit()
+      completionHandler()
+    }
+    
+    if let observerQuery = healthKitObserverQuery {
+      healthStore.execute(observerQuery)
+      print("✅ HealthKit observer query started")
+    }
+  }
+  
+  private func getStepsFromHealthKit() {
+    guard let healthStore = healthStore,
+          let stepCountType = stepCountType,
+          isHealthKitAuthorized else {
+      print("⚠️ HealthKit not available, falling back to Core Motion")
+      return
+    }
+    
+    let calendar = Calendar.current
+    let now = Date()
+    let startOfDay = calendar.startOfDay(for: now)
+    let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
+    
+    let query = HKStatisticsQuery(quantityType: stepCountType,
+                                  quantitySamplePredicate: predicate,
+                                  options: .cumulativeSum) { [weak self] query, statistics, error in
+      guard let self = self else { return }
+      
+      if let error = error {
+        print("❌ Error querying HealthKit steps: \(error.localizedDescription)")
+        // Fall back to Core Motion
+        self.updateStepCountFromPedometer()
+        return
+      }
+      
+      guard let statistics = statistics,
+            let sum = statistics.sumQuantity() else {
+        print("⚠️ No step data from HealthKit, falling back to Core Motion")
+        self.updateStepCountFromPedometer()
+        return
+      }
+      
+      let steps = Int(sum.doubleValue(for: HKUnit.count()))
+      self.lastStepCount = steps
+      
+      // Update SharedPreferences (Flutter format)
+      let prefsName = "FlutterSharedPreferences"
+      let sharedPrefs = UserDefaults(suiteName: prefsName) ?? UserDefaults.standard
+      
+      let dateFormatter = DateFormatter()
+      dateFormatter.dateFormat = "yyyy-MM-dd"
+      let todayString = dateFormatter.string(from: now)
+      
+      // Save steps from HealthKit (this is the authoritative source)
+      sharedPrefs.set(steps, forKey: "flutter.daily_steps")
+      sharedPrefs.set(todayString, forKey: "flutter.steps_date")
+      sharedPrefs.synchronize()
+      
+      print("🏥 HealthKit step count updated: \(steps) steps")
+      
+      // Update notification
+      if steps % 100 == 0 || self.shouldUpdateNotification() {
+        self.updateStepNotification(steps: steps)
+      }
+    }
+    
+    healthStore.execute(query)
+  }
+  
+  private func getHistoricalStepsFromHealthKit(days: Int = 7, completion: @escaping ([String: Int]) -> Void) {
+    guard let healthStore = healthStore,
+          let stepCountType = stepCountType,
+          isHealthKitAuthorized else {
+      print("⚠️ HealthKit not available for historical data")
+      completion([:])
+      return
+    }
+    
+    let calendar = Calendar.current
+    let now = Date()
+    var stepsByDate: [String: Int] = [:]
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "yyyy-MM-dd"
+    
+    let group = DispatchGroup()
+    
+    for dayOffset in 0..<days {
+      group.enter()
+      let date = calendar.date(byAdding: .day, value: -dayOffset, to: now)!
+      let startOfDay = calendar.startOfDay(for: date)
+      let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+      let dateString = dateFormatter.string(from: date)
+      
+      let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
+      
+      let query = HKStatisticsQuery(quantityType: stepCountType,
+                                    quantitySamplePredicate: predicate,
+                                    options: .cumulativeSum) { query, statistics, error in
+        defer { group.leave() }
+        
+        if let error = error {
+          print("❌ Error querying HealthKit steps for \(dateString): \(error.localizedDescription)")
+          stepsByDate[dateString] = 0
+          return
+        }
+        
+        if let statistics = statistics,
+           let sum = statistics.sumQuantity() {
+          let steps = Int(sum.doubleValue(for: HKUnit.count()))
+          stepsByDate[dateString] = steps
+        } else {
+          stepsByDate[dateString] = 0
+        }
+      }
+      
+      healthStore.execute(query)
+    }
+    
+    group.notify(queue: .main) {
+      completion(stepsByDate)
+    }
+  }
+
   // MARK: - Step Tracking
 
   private func requestNotificationPermission() {
@@ -304,11 +503,28 @@ import UserNotifications
   }
 
   private func startBackgroundStepTracking() {
+    // Try HealthKit first (preferred method)
+    if isHealthKitAuthorized {
+      print("🏥 Using HealthKit for step tracking")
+      getStepsFromHealthKit()
+      
+      // Set up periodic updates from HealthKit
+      stepUpdateTimer = Timer.scheduledTimer(withTimeInterval: 120.0, repeats: true) { [weak self] _ in
+        self?.getStepsFromHealthKit()
+      }
+      
+      print("✅ Started HealthKit background step tracking")
+      return
+    }
+    
+    // Fallback to Core Motion if HealthKit is not available/authorized
     guard CMPedometer.isStepCountingAvailable() else {
       print("❌ Step counting not available on this device")
       return
     }
 
+    print("📱 Falling back to Core Motion for step tracking")
+    
     if pedometer == nil {
       pedometer = CMPedometer()
     }
@@ -320,7 +536,7 @@ import UserNotifications
     pedometer?.startUpdates(from: startOfDay) { [weak self] data, error in
       guard let self = self, let data = data else {
         if let error = error {
-          print("❌ Error getting step data: \(error.localizedDescription)")
+          print("❌ Error getting step data from Core Motion: \(error.localizedDescription)")
         }
         return
       }
@@ -329,7 +545,6 @@ import UserNotifications
       self.lastStepCount = steps
 
       // Update SharedPreferences (Flutter format)
-      let prefs = UserDefaults.standard
       let prefsName = "FlutterSharedPreferences"
       let sharedPrefs = UserDefaults(suiteName: prefsName) ?? UserDefaults.standard
 
@@ -343,7 +558,7 @@ import UserNotifications
       sharedPrefs.set(todayString, forKey: "flutter.steps_date")
       sharedPrefs.synchronize()
 
-      print("📱 iOS Step count updated: \(steps) steps")
+      print("📱 Core Motion step count updated: \(steps) steps")
 
       // Update notification every 100 steps or every 5 minutes
       if steps % 100 == 0 || self.shouldUpdateNotification() {
@@ -353,16 +568,31 @@ import UserNotifications
 
     // Start periodic updates every 2 minutes
     stepUpdateTimer = Timer.scheduledTimer(withTimeInterval: 120.0, repeats: true) { [weak self] _ in
-      self?.updateStepCountFromPedometer()
+      // Try HealthKit first, fallback to Core Motion
+      if self?.isHealthKitAuthorized == true {
+        self?.getStepsFromHealthKit()
+      } else {
+        self?.updateStepCountFromPedometer()
+      }
     }
 
-    print("✅ Started background step tracking on iOS")
+    print("✅ Started Core Motion background step tracking (fallback)")
   }
 
   private func stopBackgroundStepTracking() {
+    // Stop HealthKit observer if running
+    if let observerQuery = healthKitObserverQuery {
+      healthStore?.stop(observerQuery)
+      healthKitObserverQuery = nil
+    }
+    
+    // Stop Core Motion updates
     pedometer?.stopUpdates()
+    
+    // Stop timer
     stepUpdateTimer?.invalidate()
     stepUpdateTimer = nil
+    
     print("⏹️ Stopped background step tracking on iOS")
   }
 
@@ -398,6 +628,41 @@ import UserNotifications
   }
 
   private func getCurrentSteps(result: @escaping FlutterResult) {
+    // Try HealthKit first
+    if isHealthKitAuthorized, let healthStore = healthStore, let stepCountType = stepCountType {
+      let calendar = Calendar.current
+      let now = Date()
+      let startOfDay = calendar.startOfDay(for: now)
+      let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
+      
+      let query = HKStatisticsQuery(quantityType: stepCountType,
+                                    quantitySamplePredicate: predicate,
+                                    options: .cumulativeSum) { query, statistics, error in
+        if let error = error {
+          print("❌ Error getting steps from HealthKit: \(error.localizedDescription)")
+          // Fallback to Core Motion
+          self.getCurrentStepsFromCoreMotion(result: result)
+          return
+        }
+        
+        if let statistics = statistics, let sum = statistics.sumQuantity() {
+          let steps = Int(sum.doubleValue(for: HKUnit.count()))
+          result(steps)
+        } else {
+          // Fallback to Core Motion
+          self.getCurrentStepsFromCoreMotion(result: result)
+        }
+      }
+      
+      healthStore.execute(query)
+      return
+    }
+    
+    // Fallback to Core Motion
+    getCurrentStepsFromCoreMotion(result: result)
+  }
+  
+  private func getCurrentStepsFromCoreMotion(result: @escaping FlutterResult) {
     guard let pedometer = pedometer else {
       result(0)
       return
@@ -468,6 +733,11 @@ import UserNotifications
   override func applicationWillEnterForeground(_ application: UIApplication) {
     super.applicationWillEnterForeground(application)
     // Update step count when app comes to foreground
-    updateStepCountFromPedometer()
+    // Try HealthKit first, fallback to Core Motion
+    if isHealthKitAuthorized {
+      getStepsFromHealthKit()
+    } else {
+      updateStepCountFromPedometer()
+    }
   }
 }

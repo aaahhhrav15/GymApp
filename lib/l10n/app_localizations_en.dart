@@ -74,7 +74,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stepCounter => 'Step Counter';
 
   @override
-  String get stepsRemaining => 'steps remaining';
+  String get stepsRemaining => 'Steps Remaining';
 
   @override
   String get goalAchieved => 'Goal Achieved!';
@@ -95,7 +95,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get water => 'Water';
 
   @override
-  String get waterIntake => 'water intake';
+  String get waterIntake => 'Water Intake';
 
   @override
   String get glasses => 'Glasses';
@@ -567,7 +567,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get goal => 'Goal';
 
   @override
-  String get remaining => 'remaining';
+  String get remaining => 'Remaining';
 
   @override
   String get quickAdd => 'Quick Add';

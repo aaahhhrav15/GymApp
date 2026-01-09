@@ -46,6 +46,10 @@
 	<string>This app uses location services for step counting, fitness tracking, and to connect to Bluetooth body composition devices. Location is required for Bluetooth Low Energy scanning on iOS.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>This app uses motion sensors to track your daily steps and physical activity for health monitoring.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>This app needs access to your step count data from Apple Health to provide accurate fitness tracking and sync with your health records.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>This app needs permission to update your step count data in Apple Health for comprehensive health tracking.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs photo library access to analyze food images</string>
 	<key>NSRequiresIPhoneOS</key>

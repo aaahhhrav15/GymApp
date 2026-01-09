@@ -25,6 +25,8 @@ class StepsService {
 
   StreamSubscription<StepCount>? _stepCountStream;
   StreamSubscription<PedestrianStatus>? _pedestrianStatusStream;
+  Timer? _periodicSyncTimer;
+  Timer? _healthCheckTimer;
 
   // Core data - simplified
   int _dailySteps = 0;
@@ -38,10 +40,14 @@ class StepsService {
   // For validation and safety
   int _lastValidDeviceSteps = 0;
   DateTime _lastUpdateTime = DateTime.now();
-
-  // Hourly tracking
-  List<int> _todayHourlySteps = List.filled(24, 0);
-  int _lastHour = -1;
+  DateTime _lastBackgroundServiceCheck = DateTime.now();
+  int _consecutiveHealthCheckFailures = 0;
+  
+  // Synchronization lock to prevent race conditions
+  bool _isUpdating = false;
+  
+  // Timezone tracking for travelers
+  String? _lastKnownTimezone;
 
   // Controllers for real-time updates
   final StreamController<int> _stepsController =
@@ -92,9 +98,6 @@ class StepsService {
       await _loadStoredData();
       print('Loaded stored steps: $_dailySteps for date: $_currentDate');
 
-      // Load today's hourly steps from database
-      await _loadTodayHourlySteps();
-
       // Check if we need to reset for new day
       await _checkForNewDay();
 
@@ -109,6 +112,9 @@ class StepsService {
 
       // Periodic sync with background service
       _startPeriodicSync();
+      
+      // Start health check monitoring
+      _startHealthCheckMonitoring();
 
       print(
           'Steps Service initialized - Daily steps: $_dailySteps (Background: $_isBackgroundServiceActive)');
@@ -164,19 +170,87 @@ class StepsService {
 
   // Periodic sync with SharedPreferences (updated by background service)
   void _startPeriodicSync() {
-    Timer.periodic(const Duration(seconds: 2), (timer) async {
-      await _syncWithBackgroundService();
+    _periodicSyncTimer?.cancel();
+    _periodicSyncTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+      if (!_isUpdating) {
+        await _syncWithBackgroundService();
+      }
     });
+  }
+  
+  // Health check monitoring for background service
+  void _startHealthCheckMonitoring() {
+    _healthCheckTimer?.cancel();
+    _healthCheckTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
+      await _performHealthCheck();
+    });
+  }
+  
+  // Perform health check on background service
+  Future<void> _performHealthCheck() async {
+    try {
+      // Check if background service is still active
+      final prefs = await SharedPreferences.getInstance();
+      final lastUpdateTime = prefs.getString('${_dateKey}_last_update');
+      
+      if (lastUpdateTime != null) {
+        final lastUpdate = DateTime.parse(lastUpdateTime);
+        final timeSinceUpdate = DateTime.now().difference(lastUpdate);
+        
+        // If no update in last 10 minutes and service should be active, restart it
+        if (timeSinceUpdate.inMinutes > 10 && _isBackgroundServiceActive) {
+          print('Health check: Background service appears inactive (last update: ${timeSinceUpdate.inMinutes} min ago)');
+          _consecutiveHealthCheckFailures++;
+          
+          if (_consecutiveHealthCheckFailures >= 2) {
+            print('Health check: Restarting background service after ${_consecutiveHealthCheckFailures} failures');
+            await _restartBackgroundService();
+            _consecutiveHealthCheckFailures = 0;
+          }
+        } else {
+          _consecutiveHealthCheckFailures = 0; // Reset on success
+        }
+      }
+      
+      // Check if pedometer stream is still active
+      if (_isUsingRealPedometer && _stepCountStream == null) {
+        print('Health check: Pedometer stream lost, attempting to restart...');
+        await _startListening();
+      }
+      
+      _lastBackgroundServiceCheck = DateTime.now();
+    } catch (e) {
+      print('Error during health check: $e');
+    }
+  }
+  
+  // Restart background service
+  Future<void> _restartBackgroundService() async {
+    try {
+      print('Restarting background service...');
+      await _stopBackgroundService();
+      await Future.delayed(const Duration(seconds: 1));
+      await _startBackgroundService();
+      print('Background service restarted successfully');
+    } catch (e) {
+      print('Error restarting background service: $e');
+    }
   }
 
   // Sync with background service data
   Future<void> _syncWithBackgroundService() async {
+    if (_isUpdating) return; // Prevent concurrent updates
+    
+    _isUpdating = true;
     try {
       final prefs = await SharedPreferences.getInstance();
       final backgroundSteps = prefs.getInt(_dailyStepsKey) ?? _dailySteps;
       final backgroundDate = prefs.getString(_dateKey) ?? _currentDate;
 
-      // Check for day change
+      // Update last sync time for health check
+      await prefs.setString('${_dateKey}_last_update', DateTime.now().toIso8601String());
+
+      // Check for day change (with timezone awareness)
       if (backgroundDate != _currentDate) {
         await _checkForNewDay();
       }
@@ -191,16 +265,9 @@ class StepsService {
         _dailySteps = backgroundSteps;
         _currentDate = backgroundDate;
 
-        // Update hourly steps if we got new steps
-        if (stepIncrement > 0) {
-          final currentHour = DateTime.now().hour;
-          _todayHourlySteps[currentHour] += stepIncrement;
-        }
-
         // Save to database periodically
         if (_dailySteps % 50 == 0 && _dailySteps > oldSteps) {
           await _saveToDatabase();
-          await _saveHourlyStepsToDatabase();
         }
 
         _stepsController.add(_dailySteps);
@@ -211,96 +278,157 @@ class StepsService {
       }
     } catch (e) {
       print('Error syncing with background service: $e');
+    } finally {
+      _isUpdating = false;
     }
   }
 
-  // Force sync with SharedPreferences - always gets the latest value from background service
+  // Force sync - Single Source of Truth pattern
+  // Priority: Database > SharedPreferences > In-memory
   Future<void> forceSyncFromSharedPreferences() async {
+    if (_isUpdating) return;
+    
+    _isUpdating = true;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final backgroundSteps = prefs.getInt(_dailyStepsKey) ?? 0;
-      final backgroundDate = prefs.getString(_dateKey) ?? _getTodayString();
-      final backgroundGoal = prefs.getInt(_goalKey) ?? 10000;
-
-      final oldSteps = _dailySteps;
-      final stepIncrement = backgroundSteps > _dailySteps 
-          ? backgroundSteps - _dailySteps 
-          : 0;
-
-      // Check for day change
-      if (backgroundDate != _currentDate) {
-        await _checkForNewDay();
+      final today = _getTodayString();
+      
+      // First, try to get from database (single source of truth)
+      int syncedSteps = 0;
+      try {
+        final dbData = await StepsDatabase.getDailySteps(today);
+        if (dbData != null && dbData['total_steps'] != null) {
+          syncedSteps = dbData['total_steps'] as int;
+          print('Force sync: Loaded from database: $syncedSteps');
+        }
+      } catch (e) {
+        print('Force sync: Could not load from database: $e');
       }
+      
+      // Fallback to SharedPreferences if database doesn't have data
+      if (syncedSteps == 0) {
+        final prefs = await SharedPreferences.getInstance();
+        syncedSteps = prefs.getInt(_dailyStepsKey) ?? _dailySteps;
+        final backgroundDate = prefs.getString(_dateKey) ?? today;
+        final backgroundGoal = prefs.getInt(_goalKey) ?? _dailyGoal;
 
-      _dailySteps = backgroundSteps;
-      _currentDate = backgroundDate;
-      _dailyGoal = backgroundGoal;
+        // Check for day change
+        if (backgroundDate != _currentDate) {
+          await _checkForNewDay();
+        }
 
-      // Update hourly steps if we got new steps
-      if (stepIncrement > 0) {
-        final currentHour = DateTime.now().hour;
-        _todayHourlySteps[currentHour] += stepIncrement;
-        await _saveHourlyStepsToDatabase();
+        _dailySteps = syncedSteps;
+        _currentDate = backgroundDate;
+        _dailyGoal = backgroundGoal;
+      } else {
+        // If we got data from database, use it and update SharedPreferences cache
+        final oldSteps = _dailySteps;
+        _dailySteps = syncedSteps;
+        
+        // Update SharedPreferences cache
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt(_dailyStepsKey, _dailySteps);
+        await prefs.setString(_dateKey, today);
+        
+        print('Force sync: Updated from database: $_dailySteps (was: $oldSteps)');
       }
 
       // Always emit the latest value to update UI
       _stepsController.add(_dailySteps);
 
-      print(
-          'Force sync from SharedPreferences: $_dailySteps steps (was: $oldSteps) on $_currentDate');
+      print('Force sync completed: $_dailySteps steps on $_currentDate');
     } catch (e) {
-      print('Error force syncing from SharedPreferences: $e');
+      print('Error force syncing: $e');
+    } finally {
+      _isUpdating = false;
     }
   }
 
-  // Simple helper methods
+  // Simple helper methods with timezone awareness
   String _getTodayString() {
     final now = DateTime.now();
+    final timezone = now.timeZoneName;
+    
+    // Detect timezone changes (for travelers)
+    if (_lastKnownTimezone != null && _lastKnownTimezone != timezone) {
+      print('Timezone change detected: $_lastKnownTimezone -> $timezone');
+      // Recheck day change when timezone changes
+      _checkForNewDay();
+    }
+    
+    _lastKnownTimezone = timezone;
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+  
+  // Get today's date in UTC for consistency
+  String _getTodayStringUTC() {
+    final now = DateTime.now().toUtc();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
   Future<void> _checkForNewDay() async {
     final today = _getTodayString();
+    final todayUTC = _getTodayStringUTC();
 
-    if (_currentDate != today) {
-      print('New day detected: $today (was: $_currentDate)');
+    // Check both local and UTC dates to handle timezone edge cases
+    if (_currentDate != today && _currentDate != todayUTC) {
+      print('New day detected: $today (was: $_currentDate, UTC: $todayUTC)');
 
-      // Save yesterday's data to database if we had any steps
-      if (_dailySteps > 0 && _currentDate.isNotEmpty) {
-        // Save to weekly table (for backward compatibility)
-        final yesterday = DateTime.parse(_currentDate);
-        final dayName = _getDayAbbreviation(yesterday.weekday);
-        await StepsDatabase.insertOrUpdateSteps(dayName, _dailySteps);
+      try {
+        // Save yesterday's data to database if we had any steps
+        if (_dailySteps > 0 && _currentDate.isNotEmpty) {
+          try {
+            // Parse the old date (could be local or UTC)
+            DateTime? yesterday;
+            try {
+              yesterday = DateTime.parse(_currentDate);
+            } catch (e) {
+              // If parsing fails, use current date minus 1 day
+              yesterday = DateTime.now().subtract(const Duration(days: 1));
+            }
+            
+            final dayName = _getDayAbbreviation(yesterday.weekday);
+            await StepsDatabase.insertOrUpdateSteps(dayName, _dailySteps);
 
-        // Save to daily history table with hourly breakdown
-        await StepsDatabase.insertOrUpdateDailySteps(
-          _currentDate,
-          _dailySteps,
-          _todayHourlySteps,
-        );
+            // Save to daily history table using the stored date
+            await StepsDatabase.insertOrUpdateDailySteps(
+              _currentDate,
+              _dailySteps,
+            );
 
-        print('Saved yesterday\'s steps: $dayName = $_dailySteps');
+            print('Saved yesterday\'s steps: $dayName = $_dailySteps for date: $_currentDate');
+          } catch (e) {
+            print('Error saving yesterday\'s steps: $e');
+            // Continue with day change even if save fails
+          }
+        }
+
+        // Maintain 30-day history (remove oldest entries)
+        await StepsDatabase.maintain30DayHistory();
+
+        // Reset for new day
+        _dailySteps = 0;
+        _currentDate = today; // Use local date for consistency
+        _deviceStepsAtMidnight = 0; // Will be set when we get first reading
+
+        // Initialize today's entry in database
+        try {
+          await StepsDatabase.insertOrUpdateDailySteps(
+            today,
+            0,
+          );
+        } catch (e) {
+          print('Error initializing today\'s entry: $e');
+          // Continue even if database init fails
+        }
+
+        await _saveStoredData();
+        _stepsController.add(_dailySteps);
+      } catch (e) {
+        print('Critical error during day change: $e');
+        // Ensure we still update the date to prevent infinite loops
+        _currentDate = today;
+        await _saveStoredData();
       }
-
-      // Maintain 30-day history (remove oldest entries)
-      await StepsDatabase.maintain30DayHistory();
-
-      // Reset for new day
-      _dailySteps = 0;
-      _currentDate = today;
-      _deviceStepsAtMidnight = 0; // Will be set when we get first reading
-      _todayHourlySteps = List.filled(24, 0);
-      _lastHour = -1;
-
-      // Initialize today's entry in database
-      await StepsDatabase.insertOrUpdateDailySteps(
-        today,
-        0,
-        List.filled(24, 0),
-      );
-
-      await _saveStoredData();
-      _stepsController.add(_dailySteps);
     }
   }
 
@@ -393,19 +521,23 @@ class StepsService {
 
   // Simple and accurate step count handling
   Future<void> _handleStepCount(StepCount event) async {
-    final currentDeviceSteps = event.steps;
-    final now = DateTime.now();
-    _isUsingRealPedometer = true;
+    if (_isUpdating) return; // Prevent concurrent updates
+    
+    _isUpdating = true;
+    try {
+      final currentDeviceSteps = event.steps;
+      final now = DateTime.now();
+      _isUsingRealPedometer = true;
 
-    print('Device total steps: $currentDeviceSteps');
+      print('Device total steps: $currentDeviceSteps');
 
-    // Validate the reading
-    if (!_isValidStepReading(currentDeviceSteps)) {
-      print('Invalid step reading, ignoring: $currentDeviceSteps');
-      return;
-    }
+      // Validate the reading
+      if (!_isValidStepReading(currentDeviceSteps)) {
+        print('Invalid step reading, ignoring: $currentDeviceSteps');
+        return;
+      }
 
-    // Initialize baseline for new day or first run
+      // Initialize baseline for new day or first run
     if (_deviceStepsAtMidnight == 0) {
       // If we have existing daily steps, calculate baseline from that
       // Otherwise, assume we're starting fresh today
@@ -423,7 +555,7 @@ class StepsService {
     }
 
     // Calculate today's steps - this is the accurate count from device
-    final newDailySteps = currentDeviceSteps - _deviceStepsAtMidnight;
+    var newDailySteps = currentDeviceSteps - _deviceStepsAtMidnight;
 
     // Validate the calculated daily steps
     if (newDailySteps < 0) {
@@ -439,10 +571,13 @@ class StepsService {
       return;
     }
 
-    // Apply reasonable limits (max ~40k steps per day)
-    if (newDailySteps > 40000) {
-      print('Unreasonable step count detected: $newDailySteps, ignoring');
-      return;
+    // Apply reasonable limits (max ~60k steps per day for very active users)
+    if (newDailySteps > 60000) {
+      print('Unreasonable step count detected: $newDailySteps, capping at 60000');
+      newDailySteps = 60000;
+      // Recalculate baseline to prevent future issues
+      _deviceStepsAtMidnight = currentDeviceSteps - newDailySteps;
+      await _saveStoredData();
     }
 
     // Only update if we have new steps and they're reasonable
@@ -460,28 +595,21 @@ class StepsService {
       _lastValidDeviceSteps = currentDeviceSteps;
       _lastUpdateTime = now;
 
-      // Update hourly steps for current hour
-      final currentHour = now.hour;
-      if (_lastHour != currentHour) {
-        // New hour - ensure we have the correct baseline
-        _lastHour = currentHour;
-      }
-
-      // Add increment to current hour
-      _todayHourlySteps[currentHour] += stepIncrement;
-
       await _saveStoredData();
 
       // Save to database every 50 steps or every 2 minutes
       final timeSinceLastSave = now.difference(_lastUpdateTime).inMinutes;
       if (stepIncrement >= 50 || timeSinceLastSave >= 2) {
         await _saveToDatabase();
-        // Also save hourly data
-        await _saveHourlyStepsToDatabase();
       }
 
       _stepsController.add(_dailySteps);
-      print('Daily steps updated: $_dailySteps (+$stepIncrement) at hour $currentHour');
+      print('Daily steps updated: $_dailySteps (+$stepIncrement)');
+    }
+    } catch (e) {
+      print('Error handling step count: $e');
+    } finally {
+      _isUpdating = false;
     }
   }
 
@@ -495,12 +623,20 @@ class StepsService {
       final difference = (deviceSteps - _lastValidDeviceSteps).abs();
       final timeDiff = DateTime.now().difference(_lastUpdateTime).inMinutes;
 
-      // Allow up to 200 steps per minute (very fast walking/running)
-      final maxReasonableSteps = math.max(2000, timeDiff * 200);
+      // Allow up to 300 steps per minute (for runners/sprinters)
+      // Minimum 2000 steps buffer for app being closed
+      final maxReasonableSteps = math.max(2000, timeDiff * 300);
 
       if (difference > maxReasonableSteps) {
         print(
-            'Step reading validation failed: difference=$difference in ${timeDiff}min');
+            'Step reading validation failed: difference=$difference in ${timeDiff}min (max allowed: $maxReasonableSteps)');
+        // If difference is huge, might be device reset - allow it but log warning
+        if (difference > 100000) {
+          print('WARNING: Very large step difference detected. Device may have reset.');
+          // Reset baseline tracking
+          _lastValidDeviceSteps = 0;
+          return true; // Allow it, will be handled in baseline recalculation
+        }
         return false;
       }
     }
@@ -568,128 +704,136 @@ class StepsService {
   }
 
   // Save current day's steps to database (weekly table for backward compatibility)
+  // With retry logic for production reliability
+  // This is the single source of truth - all writes go through here
   Future<void> _saveToDatabase() async {
     if (_dailySteps == 0) return;
 
     final today = _getDayAbbreviation(DateTime.now().weekday);
+    final todayDateStr = _getTodayString();
+    int retries = 3;
+    int delayMs = 100;
 
-    try {
-      await StepsDatabase.insertOrUpdateSteps(today, _dailySteps);
-      print('Saved steps to database: $today = $_dailySteps');
-    } catch (e) {
-      print('Error saving steps to database: $e');
-    }
-  }
-
-  // Save hourly steps to daily history database
-  Future<void> _saveHourlyStepsToDatabase() async {
-    final today = _getTodayString();
-
-    try {
-      await StepsDatabase.insertOrUpdateDailySteps(
-        today,
-        _dailySteps,
-        _todayHourlySteps,
-      );
-      print('Saved hourly steps to database for $today');
-    } catch (e) {
-      print('Error saving hourly steps to database: $e');
-    }
-  }
-
-  // Load today's hourly steps from database
-  Future<void> _loadTodayHourlySteps() async {
-    final today = _getTodayString();
-
-    try {
-      final dailyData = await StepsDatabase.getDailySteps(today);
-      if (dailyData != null) {
-        final hourlyList = dailyData['hourly_steps'] as List<dynamic>;
-        _todayHourlySteps = hourlyList.map((e) => e as int).toList();
-        _dailySteps = dailyData['total_steps'] as int;
-        print('Loaded hourly steps from database for $today: $_dailySteps total');
-      } else {
-        // Initialize with zeros if no data
-        _todayHourlySteps = List.filled(24, 0);
-        print('No hourly data found for $today, initialized with zeros');
+    while (retries > 0) {
+      try {
+        // Save to daily history (primary storage - single source of truth)
+        await StepsDatabase.insertOrUpdateDailySteps(
+          todayDateStr,
+          _dailySteps,
+        );
+        
+        // Also save to weekly table (for backward compatibility)
+        await StepsDatabase.insertOrUpdateSteps(today, _dailySteps);
+        
+        // Update SharedPreferences cache (for background service)
+        await _saveStoredData();
+        
+        print('Saved steps to database (SSoT): $today = $_dailySteps');
+        return; // Success, exit retry loop
+      } catch (e) {
+        retries--;
+        if (retries > 0) {
+          print('Error saving steps to database (retrying in ${delayMs}ms): $e');
+          await Future.delayed(Duration(milliseconds: delayMs));
+          delayMs *= 2; // Exponential backoff
+        } else {
+          print('CRITICAL: Failed to save steps to database after 3 retries: $e');
+          // Save to SharedPreferences as backup (degraded mode)
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setInt(_dailyStepsKey, _dailySteps);
+            await prefs.setString(_dateKey, todayDateStr);
+            print('Saved to SharedPreferences as backup');
+          } catch (backupError) {
+            print('CRITICAL: Failed to save to SharedPreferences backup: $backupError');
+          }
+        }
       }
-    } catch (e) {
-      print('Error loading hourly steps from database: $e');
-      _todayHourlySteps = List.filled(24, 0);
     }
   }
 
-  // Load stored data - simplified
+
+  // Load stored data - Single Source of Truth pattern
+  // Priority: Database > SharedPreferences > Defaults
   Future<void> _loadStoredData() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    _dailySteps = prefs.getInt(_dailyStepsKey) ?? 0;
-    _dailyGoal = prefs.getInt(_goalKey) ?? 10000;
-    _deviceStepsAtMidnight = prefs.getInt(_deviceStepsKey) ?? 0;
-    _currentDate = prefs.getString(_dateKey) ?? _getTodayString();
-
-    print('Loaded stored data:');
-    print('  Daily steps: $_dailySteps');
-    print('  Daily goal: $_dailyGoal');
-    print('  Date: $_currentDate');
-    print('  Device baseline: $_deviceStepsAtMidnight');
-
-    // Immediately notify listeners with loaded data
-    _stepsController.add(_dailySteps);
-  }
-
-  // Save stored data - simplified
-  Future<void> _saveStoredData() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.setInt(_dailyStepsKey, _dailySteps);
-    await prefs.setInt(_goalKey, _dailyGoal);
-    await prefs.setInt(_deviceStepsKey, _deviceStepsAtMidnight);
-    await prefs.setString(_dateKey, _currentDate);
-  }
-
-  // Get hourly steps data - returns actual tracked hourly data
-  Future<List<int>> getHourlySteps([String? day]) async {
-    final today = _getTodayString();
-    final todayDayName = _getDayAbbreviation(DateTime.now().weekday);
-
-    // If requesting today or no day specified, return today's hourly data
-    if (day == null || day == 'Today' || day == todayDayName) {
-      // Return current hourly steps (live data)
-      return List.from(_todayHourlySteps);
-    }
-
-    // For historical days, try to get from database
-    // Convert day name to date (this is approximate - we'll need to calculate based on current week)
     try {
-      // For weekly view, we need to calculate the date
-      // This is a simplified approach - in a full implementation, you'd track dates properly
-      final now = DateTime.now();
-      final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      final dayIndex = days.indexOf(day);
-      if (dayIndex == -1) {
-        return List.filled(24, 0);
+      final prefs = await SharedPreferences.getInstance();
+      final today = _getTodayString();
+      
+      // Try to load from database first (single source of truth)
+      try {
+        final dbData = await StepsDatabase.getDailySteps(today);
+        if (dbData != null && dbData['total_steps'] != null) {
+          _dailySteps = dbData['total_steps'] as int;
+          print('Loaded steps from database: $_dailySteps');
+        }
+      } catch (e) {
+        print('Could not load from database, using SharedPreferences: $e');
+      }
+      
+      // Fallback to SharedPreferences if database doesn't have today's data
+      if (_dailySteps == 0) {
+        _dailySteps = prefs.getInt(_dailyStepsKey) ?? 0;
+      }
+      
+      // Load other data from SharedPreferences (these are not in database)
+      _dailyGoal = prefs.getInt(_goalKey) ?? 10000;
+      _deviceStepsAtMidnight = prefs.getInt(_deviceStepsKey) ?? 0;
+      _currentDate = prefs.getString(_dateKey) ?? today;
+      
+      // If date doesn't match today, check for day change
+      if (_currentDate != today) {
+        await _checkForNewDay();
       }
 
-      // Calculate the date for this day in current week
-      final currentDayIndex = now.weekday - 1; // Monday = 0
-      final daysDiff = dayIndex - currentDayIndex;
-      final targetDate = now.add(Duration(days: daysDiff));
-      final targetDateString = _getDateString(targetDate);
+      print('Loaded stored data (Single Source of Truth):');
+      print('  Daily steps: $_dailySteps (from ${_dailySteps > 0 ? "database" : "prefs"})');
+      print('  Daily goal: $_dailyGoal');
+      print('  Date: $_currentDate');
+      print('  Device baseline: $_deviceStepsAtMidnight');
 
-      // Get from daily history
-      final hourlySteps = await StepsDatabase.getHourlyStepsForDate(targetDateString);
-      return hourlySteps;
+      // Immediately notify listeners with loaded data
+      _stepsController.add(_dailySteps);
     } catch (e) {
-      print('Error getting hourly steps for day $day: $e');
-      return List.filled(24, 0);
+      print('Error loading stored data: $e');
+      // Set defaults
+      _dailySteps = 0;
+      _dailyGoal = 10000;
+      _currentDate = _getTodayString();
+      _deviceStepsAtMidnight = 0;
     }
   }
 
-  // Helper to get date string
-  String _getDateString(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  // Save stored data - Single Source of Truth pattern
+  // Database is primary, SharedPreferences is cache for background service
+  Future<void> _saveStoredData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final today = _getTodayString();
+
+      // Save to database first (single source of truth)
+      try {
+        await StepsDatabase.insertOrUpdateDailySteps(
+          today,
+          _dailySteps,
+        );
+      } catch (e) {
+        print('Warning: Could not save to database, using SharedPreferences only: $e');
+      }
+
+      // Also save to SharedPreferences as cache (for background service)
+      await prefs.setInt(_dailyStepsKey, _dailySteps);
+      await prefs.setInt(_goalKey, _dailyGoal);
+      await prefs.setInt(_deviceStepsKey, _deviceStepsAtMidnight);
+      await prefs.setString(_dateKey, _currentDate);
+      
+      // Update last sync time for health check
+      await prefs.setString('${_dateKey}_last_update', DateTime.now().toIso8601String());
+    } catch (e) {
+      print('Error saving stored data: $e');
+    }
   }
+
 
   // Get weekly steps data from database
   Future<Map<String, int>> getWeeklySteps() async {
@@ -714,6 +858,26 @@ class StepsService {
         'Sat': 0,
         'Sun': 0,
       };
+    }
+  }
+
+  // Get steps for a 7-day period (offset: 0 = today-6, 1 = today-13, etc.)
+  // Returns a map with date strings (YYYY-MM-DD) as keys and step counts as values
+  Future<Map<String, int>> getStepsFor7DayPeriod(int offset, {int? todaySteps}) async {
+    try {
+      final stepsMap = await StepsDatabase.getStepsFor7DayPeriod(offset);
+      
+      // If this is offset 0 (current week), update today's steps with live data
+      if (offset == 0) {
+        final today = _getTodayString();
+        stepsMap[today] = todaySteps ?? _dailySteps;
+      }
+      
+      print('7-day period steps (offset $offset): $stepsMap');
+      return stepsMap;
+    } catch (e) {
+      print('Error getting 7-day period steps: $e');
+      return {};
     }
   }
 
@@ -795,6 +959,8 @@ class StepsService {
   int getRemainingSteps() => math.max(0, _dailyGoal - _dailySteps);
 
   void dispose() {
+    _periodicSyncTimer?.cancel();
+    _healthCheckTimer?.cancel();
     _stepCountStream?.cancel();
     _pedestrianStatusStream?.cancel();
     _stepsController.close();

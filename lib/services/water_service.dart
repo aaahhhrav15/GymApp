@@ -466,10 +466,10 @@ class WaterService {
 
   // Determine intake type based on amount
   static String _getIntakeType(int amount) {
-    if (amount <= 150) return 'Small sip';
-    if (amount <= 250) return 'Regular drink';
-    if (amount <= 400) return 'Big gulp';
-    if (amount <= 600) return 'Large drink';
+    if (amount <= 150) return 'Small Sip';
+    if (amount <= 250) return 'Regular Drink';
+    if (amount <= 400) return 'Big Gulp';
+    if (amount <= 600) return 'Large Drink';
     return 'Extra large';
   }
 

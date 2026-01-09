@@ -140,6 +140,25 @@ class WaterDatabase {
     return result > 0;
   }
 
+  // Update water intake
+  static Future<bool> updateWaterIntake({
+    required int intakeId,
+    required int amount,
+    required String type,
+  }) async {
+    final db = await database;
+    final result = await db.update(
+      _waterIntakeTable,
+      {
+        _intakeAmount: amount,
+        _intakeType: type,
+      },
+      where: '$_intakeId = ?',
+      whereArgs: [intakeId],
+    );
+    return result > 0;
+  }
+
   // Get today's water intake
   static Future<List<Map<String, dynamic>>> getTodaysIntake() async {
     final db = await database;
@@ -166,6 +185,19 @@ class WaterDatabase {
       _waterIntakeTable,
       where: '$_intakeDate BETWEEN ? AND ?',
       whereArgs: [startStr, endStr],
+      orderBy: '$_intakeTimestamp DESC',
+    );
+  }
+
+  // Get intake for a specific date
+  static Future<List<Map<String, dynamic>>> getIntakeForDate(DateTime date) async {
+    final db = await database;
+    final dateStr = _formatDate(date);
+
+    return await db.query(
+      _waterIntakeTable,
+      where: '$_intakeDate = ?',
+      whereArgs: [dateStr],
       orderBy: '$_intakeTimestamp DESC',
     );
   }
@@ -271,6 +303,13 @@ class WaterDatabase {
       WHERE $_summaryDate >= ? AND $_summaryGoalAchieved = 1
     ''', [thirtyDaysAgoStr]);
 
+    // Get total days tracked (all days in last 30 days)
+    final totalDaysResult = await db.rawQuery('''
+      SELECT COUNT(*) as total_days
+      FROM $_dailySummaryTable
+      WHERE $_summaryDate >= ?
+    ''', [thirtyDaysAgoStr]);
+
     // Get average daily intake
     final avgResult = await db.rawQuery('''
       SELECT AVG($_summaryTotalIntake) as avg_intake
@@ -281,24 +320,61 @@ class WaterDatabase {
     // Get this week's total
     final weekAgo = DateTime.now().subtract(const Duration(days: 7));
     final weekAgoStr = _formatDate(weekAgo);
+    final todayStr = _formatDate(DateTime.now());
+    
+    // Check if today's summary exists in the database
+    final todaySummaryResult = await db.query(
+      _dailySummaryTable,
+      where: '$_summaryDate = ?',
+      whereArgs: [todayStr],
+    );
+    final todaySummaryExists = todaySummaryResult.isNotEmpty;
+    
     final weekResult = await db.rawQuery('''
       SELECT SUM($_summaryTotalIntake) as week_total
       FROM $_dailySummaryTable
-      WHERE $_summaryDate >= ?
-    ''', [weekAgoStr]);
+      WHERE $_summaryDate >= ? AND $_summaryDate < ?
+    ''', [weekAgoStr, todayStr]);
 
     // Get today's stats
     final todayTotal = await getTodaysTotalIntake();
     final dailyGoal = await getDailyGoal();
 
+    // Safely extract values with null handling
+    final streakDays = streakResult.isNotEmpty
+        ? (streakResult.first['streak_days'] as int? ?? 0)
+        : 0;
+    
+    final goalAchievedDays = goalAchievedResult.isNotEmpty
+        ? (goalAchievedResult.first['goal_achieved_days'] as int? ?? 0)
+        : 0;
+    
+    final totalDaysTracked = totalDaysResult.isNotEmpty
+        ? (totalDaysResult.first['total_days'] as int? ?? 0)
+        : 0;
+    
+    final avgIntake = avgResult.isNotEmpty
+        ? ((avgResult.first['avg_intake'] as num?)?.toDouble() ?? 0.0).round()
+        : 0;
+    
+    // Calculate week total: sum of past 7 days (excluding today) + today's total
+    final weekTotalFromDB = weekResult.isNotEmpty
+        ? ((weekResult.first['week_total'] as num?)?.toInt() ?? 0)
+        : 0;
+    
+    // Add today's total: use summary value if it exists, otherwise use current intake
+    final todayValue = todaySummaryExists && todaySummaryResult.first[_summaryTotalIntake] != null
+        ? (todaySummaryResult.first[_summaryTotalIntake] as int? ?? 0)
+        : todayTotal;
+    
+    final weekTotal = weekTotalFromDB + todayValue;
+
     return {
-      'streakDays': streakResult.first['streak_days'] as int? ?? 0,
-      'goalAchievedDays':
-          goalAchievedResult.first['goal_achieved_days'] as int? ?? 0,
-      'averageDailyIntake':
-          (avgResult.first['avg_intake'] as double?)?.round() ?? 0,
-      'totalIntakeThisWeek':
-          (weekResult.first['week_total'] as int? ?? 0) + todayTotal,
+      'streakDays': streakDays,
+      'goalAchievedDays': goalAchievedDays,
+      'totalDaysTracked': totalDaysTracked > 0 ? totalDaysTracked : 1, // At least 1 for today
+      'averageDailyIntake': avgIntake,
+      'totalIntakeThisWeek': weekTotal,
       'todayIntake': todayTotal,
       'dailyGoal': dailyGoal,
       'completionPercentage': dailyGoal > 0

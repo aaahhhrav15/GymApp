@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../providers/water_provider.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_theme.dart';
 
 class WaterDetailScreen extends StatefulWidget {
   const WaterDetailScreen({super.key});
@@ -88,6 +89,133 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
     } else {
       // Snackbar removed - no longer showing error messages
     }
+  }
+
+  void _showAddWaterConfirmation(int amount, {String? customType}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF112240) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF29B6F6).withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.water_drop,
+                  color: Color(0xFF29B6F6),
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Add Water Intake?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Add ${amount}ml${customType != null ? ' (${customType})' : ''}?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.cancel,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.pop(context);
+                          _addWater(amount, customType: customType);
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF29B6F6), Color(0xFF0288D1)],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF29B6F6).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Add',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _removeWater(int intakeId) async {
@@ -187,20 +315,20 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Responsive dimensions
-    final horizontalPadding = screenWidth * 0.06;
-    final sectionSpacing = screenHeight * 0.025;
-    final smallSpacing = screenHeight * 0.025;
+    final horizontalPadding = screenWidth * 0.04;
+    final sectionSpacing = screenHeight * 0.018;
 
     return Consumer<WaterProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading) {
           return Scaffold(
-            backgroundColor: Theme.of(context).colorScheme.background,
+            backgroundColor: isDark ? const Color(0xFF0A1929) : const Color(0xFFF0F8FF),
             body: Center(
               child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
+                color: const Color(0xFF29B6F6),
               ),
             ),
           );
@@ -211,7 +339,7 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
         int remaining = provider.remaining;
 
         return Scaffold(
-          backgroundColor: Theme.of(context).colorScheme.background,
+          backgroundColor: isDark ? const Color(0xFF0A1929) : const Color(0xFFF0F8FF),
           body: SafeArea(
             child: FadeTransition(
               opacity: _fadeAnimation,
@@ -225,35 +353,31 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
                     child: SingleChildScrollView(
                       padding:
                           EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      physics: const BouncingScrollPhysics(),
                       child: Column(
                         children: [
-                          SizedBox(height: smallSpacing),
+                          SizedBox(height: sectionSpacing),
 
-                          // Hydration reminder card
-                          _buildHydrationReminderCard(provider),
+                          // Main Progress Circle Section
+                          _buildProgressCircle(provider, progressPercentage, percentage),
 
-                          SizedBox(height: smallSpacing),
+                          SizedBox(height: sectionSpacing),
 
-                          // Main Water Tracking Section
-                          _buildMainTrackingSection(
-                            provider,
-                            progressPercentage,
-                            percentage,
-                            remaining,
-                          ),
+                          // Stats Row
+                          _buildStatsRow(provider, remaining),
 
                           SizedBox(height: sectionSpacing),
 
                           // Quick Add Buttons
                           _buildQuickAddButtons(),
 
-                          const SizedBox(height: 30),
+                          SizedBox(height: sectionSpacing),
 
                           // Today's History
                           if (provider.todaysIntake.isNotEmpty)
                             _buildTodayHistory(provider),
 
-                          const SizedBox(height: 100),
+                          SizedBox(height: screenHeight * 0.1),
                         ],
                       ),
                     ),
@@ -269,46 +393,47 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
 
   Widget _buildHeader() {
     final screenWidth = MediaQuery.of(context).size.width;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Responsive dimensions
-    final headerPadding = screenWidth * 0.06;
-    final buttonSize = screenWidth * 0.1;
-    final buttonRadius = buttonSize * 0.5;
-    final iconSize = screenWidth * 0.04;
-    final titleFontSize = screenWidth * 0.045;
-    final topPadding = screenWidth * 0.03;
-    final bottomPadding = screenWidth * 0.02;
+    final headerPadding = screenWidth * 0.04;
+    final buttonSize = screenWidth * 0.11;
+    final iconSize = screenWidth * 0.05;
+    final titleFontSize = screenWidth * 0.05;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        headerPadding,
-        topPadding,
-        headerPadding,
-        bottomPadding,
+      padding: EdgeInsets.symmetric(
+        horizontal: headerPadding,
+        vertical: screenWidth * 0.03,
       ),
       child: Row(
         children: [
-          GestureDetector(
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
             onTap: () => Navigator.pop(context),
+              borderRadius: BorderRadius.circular(14),
             child: Container(
               width: buttonSize,
               height: buttonSize,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(buttonRadius),
-                boxShadow: [
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: isDark ? null : [
                   BoxShadow(
-                    color:
-                        Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-                    blurRadius: 10,
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: Icon(
                 Icons.arrow_back_ios_new,
-                size: iconSize,
-                color: Theme.of(context).colorScheme.onSurface,
+                  size: iconSize * 0.7,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
               ),
             ),
           ),
@@ -318,33 +443,39 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
                 AppLocalizations.of(context)!.stayHydrated,
                 style: TextStyle(
                   fontSize: titleFontSize,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onBackground,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : Colors.black87,
+                  letterSpacing: 0.3,
                 ),
               ),
             ),
           ),
-          GestureDetector(
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
             onTap: _showOptionsMenu,
+              borderRadius: BorderRadius.circular(14),
             child: Container(
               width: buttonSize,
               height: buttonSize,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(buttonRadius),
-                boxShadow: [
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: isDark ? null : [
                   BoxShadow(
-                    color:
-                        Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-                    blurRadius: 10,
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: Icon(
                 Icons.more_vert,
-                size: iconSize,
-                color: Theme.of(context).colorScheme.onSurface,
+                  size: iconSize * 0.7,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
               ),
             ),
           ),
@@ -353,352 +484,289 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
     );
   }
 
-  Widget _buildHydrationReminderCard(WaterProvider provider) {
-    final l10n = AppLocalizations.of(context)!;
-    final reminder = _getLocalizedHydrationReminders(l10n);
+  Widget _buildProgressCircle(WaterProvider provider, double progressPercentage, int percentage) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final circleSize = screenWidth * 0.55;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Theme.of(context).colorScheme.primary.withOpacity(0.8),
-            Theme.of(context).colorScheme.primary,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? const Color(0xFF112240) : Colors.white,
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            reminder['title']!,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            reminder['message']!,
-            style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.9),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              reminder['suggestion']!,
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMainTrackingSection(
-    WaterProvider provider,
-    double progressPercentage,
-    int percentage,
-    int remaining,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+            color: isDark 
+                ? Colors.black.withOpacity(0.3) 
+                : Colors.black.withOpacity(0.08),
             blurRadius: 20,
-            offset: const Offset(0, 8),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         children: [
-          // Goal and Completed
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Circular Progress
+          Stack(
+            alignment: Alignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.goal,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.6),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${provider.dailyGoal}ml',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ],
+              // Background circle
+          Container(
+                width: circleSize,
+                height: circleSize,
+            decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDark 
+                      ? const Color(0xFF1A365D) 
+                      : const Color(0xFFE3F2FD),
+                ),
               ),
+              // Progress ring
+              SizedBox(
+                width: circleSize,
+                height: circleSize,
+                child: AnimatedBuilder(
+                  animation: _bottleAnimation,
+                  builder: (context, child) {
+                    return CustomPaint(
+                      painter: CircularProgressPainter(
+                        progress: progressPercentage * _bottleAnimation.value,
+                        strokeWidth: 14,
+                        backgroundColor: isDark 
+                            ? const Color(0xFF2D4A77) 
+                            : const Color(0xFFBBDEFB),
+                        progressColor: const Color(0xFF29B6F6),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              // Center content
               Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  Icon(
+                    Icons.water_drop,
+                    size: 32,
+                    color: const Color(0xFF29B6F6),
+                  ),
+                  const SizedBox(height: 8),
                   Text(
-                    AppLocalizations.of(context)!.completed,
+                    '${provider.currentIntake}',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.6),
-                      fontWeight: FontWeight.w500,
+                      fontSize: 42,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                      letterSpacing: -1,
                     ),
                   ),
-                  const SizedBox(height: 4),
                   Text(
-                    '$percentage%',
+                    'ml',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF29B6F6).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                    '$percentage%',
+                      style: const TextStyle(
+                        fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
+                        color: Color(0xFF29B6F6),
+                      ),
                     ),
                   ),
                 ],
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          // Goal text
+          Text(
+            '${AppLocalizations.of(context)!.goal}: ${provider.dailyGoal}ml',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white60 : Colors.black54,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-          const SizedBox(height: 30),
+  Widget _buildStatsRow(WaterProvider provider, int remaining) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+    final reminder = _getLocalizedHydrationReminders(l10n);
 
-          // Water Bottle Visualization
-          Row(
-            children: [
-              // Bottle
-              Expanded(
-                flex: 2,
-                child: AnimatedBuilder(
-                  animation: _bottleAnimation,
-                  builder: (context, child) {
-                    return CustomPaint(
-                      size: const Size(120, 200),
-                      painter: WaterBottlePainter(
-                        progress: progressPercentage * _bottleAnimation.value,
-                        waterColor: Theme.of(context).colorScheme.primary,
-                        bottleColor: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer
-                            .withOpacity(0.3),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(width: 30),
-
-              // Progress Info
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
                   children: [
-                    // Progress Status Card
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+        // Remaining Card
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: remaining > 0
-                            ? Theme.of(context)
-                                .colorScheme
-                                .primaryContainer
-                                .withOpacity(0.3)
-                            : Theme.of(context)
-                                .colorScheme
-                                .secondaryContainer
-                                .withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: remaining > 0
-                              ? Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(0.3)
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .secondary
-                                  .withOpacity(0.3),
-                          width: 1,
-                        ),
+              color: isDark ? const Color(0xFF112240) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark 
+                      ? Colors.black.withOpacity(0.3) 
+                      : Colors.black.withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              Icon(
-                                remaining > 0
-                                    ? Icons.water_drop
-                                    : Icons.check_circle,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
                                 color: remaining > 0
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).colorScheme.secondary,
+                            ? const Color(0xFF29B6F6).withOpacity(0.15)
+                            : const Color(0xFF4CAF50).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        remaining > 0 ? Icons.water_drop_outlined : Icons.check_circle,
                                 size: 18,
+                        color: remaining > 0 
+                            ? const Color(0xFF29B6F6)
+                            : const Color(0xFF4CAF50),
                               ),
-                              const SizedBox(width: 8),
+                    ),
+                    const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  remaining > 0
-                                      ? AppLocalizations.of(context)!
-                                          .almostThere
-                                      : AppLocalizations.of(context)!
-                                          .goalAchievedStatus,
+                        remaining > 0 ? l10n.remaining : l10n.goalAchievedStatus,
                                   style: TextStyle(
-                                    fontSize: 14,
+                          fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: remaining > 0
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .secondary,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                          color: isDark ? Colors.white60 : Colors.black54,
+                        ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          if (remaining > 0) ...[
+                const SizedBox(height: 12),
                             Text(
-                              '${remaining}ml',
+                  remaining > 0 ? '${remaining}ml' : l10n.excellent,
                               style: TextStyle(
-                                fontSize: 18,
+                    fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                            Text(
-                              AppLocalizations.of(context)!.remaining,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withOpacity(0.8),
-                              ),
-                            ),
-                          ] else ...[
-                            Text(
-                              AppLocalizations.of(context)!.excellent,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.secondary,
-                              ),
-                            ),
-                            Text(
-                              AppLocalizations.of(context)!.keepItUp,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .secondary
-                                    .withOpacity(0.8),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Current Intake Card
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceVariant
-                            .withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(12),
+                    color: remaining > 0 
+                        ? (isDark ? Colors.white : Colors.black87)
+                        : const Color(0xFF4CAF50),
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Tip Card
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF29B6F6),
+                  const Color(0xFF0288D1),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF29B6F6).withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              '${provider.currentIntake}ml',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                              maxLines: 1,
-                            ),
-                          ),
-                          Text(
-                            AppLocalizations.of(context)!.waterIntake,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.6),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.lightbulb_outline,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        reminder['title']!,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
+                const SizedBox(height: 12),
+                Text(
+                  reminder['message']!,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-            ],
           ),
         ],
-      ),
     );
   }
 
+
   Widget _buildQuickAddButtons() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? const Color(0xFF112240) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-            blurRadius: 15,
+            color: isDark 
+                ? Colors.black.withOpacity(0.3) 
+                : Colors.black.withOpacity(0.06),
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
@@ -706,54 +774,89 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF29B6F6).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.add_circle_outline,
+                  color: Color(0xFF29B6F6),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
           Text(
             AppLocalizations.of(context)!.quickAdd,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
+                  color: isDark ? Colors.white : Colors.black87,
             ),
           ),
-          const SizedBox(height: 16),
+            ],
+          ),
+          const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
-                child: _buildQuickAddButton('100ml', 100, Icons.water_drop),
+                child: _buildQuickAddButton('100', 100, Icons.water_drop),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
-                child: _buildQuickAddButton('250ml', 250, Icons.wine_bar),
+                child: _buildQuickAddButton('250', 250, Icons.coffee),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
-                child: _buildQuickAddButton('500ml', 500, Icons.local_drink),
+                child: _buildQuickAddButton('500', 500, Icons.local_drink),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          SizedBox(
+          const SizedBox(height: 14),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _showCustomAmountDialog,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
             width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _showCustomAmountDialog,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF29B6F6),
+                      Color(0xFF0288D1),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF29B6F6).withOpacity(0.35),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                 ),
-                elevation: 0,
+                  ],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.add, size: 20),
+                    const Icon(Icons.add, size: 20, color: Colors.white),
                   const SizedBox(width: 8),
                   Text(
                     AppLocalizations.of(context)!.customAmount,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ],
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -763,31 +866,59 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
   }
 
   Widget _buildQuickAddButton(String label, int amount, IconData icon) {
-    return GestureDetector(
-      onTap: () => _addWater(amount),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+      onTap: () => _showAddWaterConfirmation(amount),
+        borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         decoration: BoxDecoration(
-          color:
-              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+            color: isDark 
+                ? const Color(0xFF1A365D)
+                : const Color(0xFFE3F2FD),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-              width: 1),
+              color: const Color(0xFF29B6F6).withOpacity(0.3),
+              width: 1.5,
+            ),
         ),
         child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary, size: 28),
-            const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF29B6F6).withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: const Color(0xFF29B6F6),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(height: 10),
             Text(
               label,
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.primary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              Text(
+                'ml',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white60 : Colors.black54,
               ),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -795,16 +926,19 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
 
   Widget _buildTodayHistory(WaterProvider provider) {
     final intakeHistory = provider.getFormattedTodaysIntake();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? const Color(0xFF112240) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-            blurRadius: 15,
+            color: isDark 
+                ? Colors.black.withOpacity(0.3) 
+                : Colors.black.withOpacity(0.06),
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
@@ -814,26 +948,43 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
         children: [
           Row(
             children: [
-              Icon(Icons.history,
-                  color: Theme.of(context).colorScheme.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF29B6F6).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.history,
+                  color: Color(0xFF29B6F6),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
                 AppLocalizations.of(context)!.todaysIntake,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                 ),
               ),
-              const Spacer(),
-              Text(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF29B6F6).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
                 AppLocalizations.of(context)!.drinksCount(intakeHistory.length),
-                style: TextStyle(
-                    fontSize: 14,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.6)),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF29B6F6),
+                  ),
+                ),
               ),
             ],
           ),
@@ -842,36 +993,37 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: intakeHistory.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               final intake = intakeHistory[index];
-              return Container(
-                padding: const EdgeInsets.all(12),
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _showIntakeOptionsSheet(intake),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                      color: isDark 
+                          ? const Color(0xFF1A365D)
+                          : const Color(0xFFF5F9FF),
+                      borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer
-                            .withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
+                            color: const Color(0xFF29B6F6).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
                         Icons.water_drop,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 16,
+                            color: Color(0xFF29B6F6),
+                            size: 20,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -879,56 +1031,45 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
                           Text(
                             '${intake['amount']}ml',
                             style: TextStyle(
-                              fontSize: 16,
+                                  fontSize: 17,
                               fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.onSurface,
+                                  color: isDark ? Colors.white : Colors.black87,
                             ),
                           ),
+                              const SizedBox(height: 2),
                           Text(
                             intake['type'],
                             style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.6),
+                                  fontSize: 13,
+                                  color: isDark ? Colors.white60 : Colors.black54,
+                                  fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
                       ),
                     ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
                     Text(
                       intake['time'],
                       style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.5),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Delete button
-                    GestureDetector(
-                      onTap: () => _showDeleteConfirmation(intake),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .errorContainer
-                              .withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(6),
+                                fontSize: 13,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Icon(
+                              Icons.chevron_right,
+                              color: isDark ? Colors.white38 : Colors.black26,
+                              size: 20,
+                            ),
+                          ],
                         ),
-                        child: Icon(
-                          Icons.delete_outline,
-                          color: Theme.of(context).colorScheme.error,
-                          size: 16,
-                        ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               );
             },
@@ -938,152 +1079,764 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
     );
   }
 
+  void _showIntakeOptionsSheet(Map<String, dynamic> intake) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF112240) : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF29B6F6).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.water_drop,
+                      color: Color(0xFF29B6F6),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${intake['amount']}ml',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          '${intake['type']} • ${intake['time']}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Options
+            _buildBottomSheetOption(
+              icon: Icons.edit_outlined,
+              iconColor: const Color(0xFF29B6F6),
+              iconBgColor: const Color(0xFF29B6F6).withOpacity(0.15),
+              title: l10n.edit,
+              subtitle: 'Change amount or type',
+              onTap: () {
+                Navigator.pop(context);
+                _showEditIntakeDialog(intake);
+              },
+              isDark: isDark,
+            ),
+            _buildBottomSheetOption(
+              icon: Icons.delete_outline,
+              iconColor: Colors.red[400]!,
+              iconBgColor: Colors.red.withOpacity(0.12),
+              title: l10n.delete,
+              subtitle: 'Remove this entry',
+              onTap: () {
+                Navigator.pop(context);
+                _showDeleteConfirmation(intake);
+              },
+              isDark: isDark,
+            ),
+            const SizedBox(height: 8),
+            // Cancel button
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => Navigator.pop(context),
+                  borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Center(
+                      child: Text(
+                        l10n.cancel,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ),
+                        ),
+                      ),
+                    ),
+                  ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomSheetOption({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.white54 : Colors.black45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: isDark ? Colors.white30 : Colors.black26,
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEditIntakeDialog(Map<String, dynamic> intake) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+    final TextEditingController amountController = TextEditingController(
+      text: intake['amount'].toString(),
+    );
+    final TextEditingController typeController = TextEditingController(
+      text: intake['type'],
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF112240) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF29B6F6).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.edit_outlined,
+                      color: Color(0xFF29B6F6),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Edit Entry',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              // Amount field
+              Text(
+                l10n.amountMl,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'e.g., 250',
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.black26,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.water_drop_outlined,
+                    color: const Color(0xFF29B6F6),
+                  ),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF1A365D) : const Color(0xFFF5F9FF),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF29B6F6), width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Type field
+              Text(
+                l10n.typeOptional,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: typeController,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                decoration: InputDecoration(
+                  hintText: l10n.egPostWorkout,
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.black26,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.label_outline,
+                    color: const Color(0xFF29B6F6),
+                  ),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF1A365D) : const Color(0xFFF5F9FF),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF29B6F6), width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.cancel,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          final amount = int.tryParse(amountController.text);
+                          if (amount != null && amount > 0 && amount <= 2000) {
+                            Navigator.pop(context);
+                            final customType = typeController.text.trim().isNotEmpty
+                                ? typeController.text.trim()
+                                : null;
+                            await _updateWater(intake['id'], amount, customType: customType);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF29B6F6), Color(0xFF0288D1)],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF29B6F6).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Save',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateWater(int intakeId, int amount, {String? customType}) async {
+    final provider = Provider.of<WaterProvider>(context, listen: false);
+    await provider.updateWaterIntake(intakeId, amount, customType: customType);
+    
+    // Trigger animation
+    _bottleAnimationController.reset();
+    _bottleAnimationController.forward();
+  }
+
   void _showCustomAmountDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final TextEditingController amountController = TextEditingController();
     final TextEditingController typeController = TextEditingController();
-
     final l10n = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          l10n.addCustomAmount,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Column(
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF112240) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
           mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF29B6F6).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.add_circle_outline,
+                      color: Color(0xFF29B6F6),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    l10n.addCustomAmount,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
             Text(
               l10n.enterWaterAmount,
               style: TextStyle(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
-            ),
-            const SizedBox(height: 20),
+                  fontSize: 14,
+                  color: isDark ? Colors.white54 : Colors.black45,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Amount field
+              Text(
+                l10n.amountMl,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
             TextField(
               controller: amountController,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
               decoration: InputDecoration(
-                labelText: l10n.amountMl,
                 hintText: l10n.egAmount,
-                prefixIcon: const Icon(Icons.water_drop),
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.black26,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.water_drop_outlined,
+                    color: Color(0xFF29B6F6),
+                  ),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF1A365D) : const Color(0xFFF5F9FF),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary, width: 2),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF29B6F6), width: 2),
                 ),
               ),
             ),
             const SizedBox(height: 16),
+              // Type field
+              Text(
+                l10n.typeOptional,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
             TextField(
               controller: typeController,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
               decoration: InputDecoration(
-                labelText: l10n.typeOptional,
                 hintText: l10n.egPostWorkout,
-                prefixIcon: const Icon(Icons.label_outline),
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.black26,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.label_outline,
+                    color: Color(0xFF29B6F6),
+                  ),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF1A365D) : const Color(0xFFF5F9FF),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary, width: 2),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF29B6F6), width: 2),
                 ),
               ),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel,
+              const SizedBox(height: 24),
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.cancel,
                 style: TextStyle(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.6))),
-          ),
-          ElevatedButton(
-            onPressed: () {
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
               final amount = int.tryParse(amountController.text);
               if (amount != null && amount > 0 && amount <= 2000) {
                 Navigator.pop(context);
                 final customType = typeController.text.trim().isNotEmpty
                     ? typeController.text.trim()
                     : null;
-                _addWater(amount, customType: customType);
-              } else {
-                // Snackbar removed - no longer showing error messages
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                _showAddWaterConfirmation(amount, customType: customType);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF29B6F6), Color(0xFF0288D1)],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF29B6F6).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.add,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            child: Text(l10n.add,
-                style:
-                    TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   void _showDeleteConfirmation(Map<String, dynamic> intake) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF112240) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Warning icon
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.delete_outline,
+                  color: Colors.red[400],
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
           l10n.deleteWaterIntake,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
         ),
-        content: Text(
+              ),
+              const SizedBox(height: 12),
+              Text(
           l10n.deleteWaterIntakeConfirm(
               intake['amount'].toString(), intake['time'].toString()),
+                textAlign: TextAlign.center,
           style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel,
+                  fontSize: 15,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.cancel,
                 style: TextStyle(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.6))),
-          ),
-          ElevatedButton(
-            onPressed: () {
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
               Navigator.pop(context);
               _removeWater(intake['id']);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.red[400],
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.delete,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            child: Text(l10n.delete,
-                style: TextStyle(color: Theme.of(context).colorScheme.onError)),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   void _showGoalAchievedDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final provider = Provider.of<WaterProvider>(context, listen: false);
     final l10n = AppLocalizations.of(context)!;
 
@@ -1093,14 +1846,14 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
+            color: isDark ? const Color(0xFF112240) : Colors.white,
+            borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
-                blurRadius: 20,
+                color: const Color(0xFF4CAF50).withOpacity(0.2),
+                blurRadius: 30,
                 offset: const Offset(0, 10),
               ),
             ],
@@ -1108,30 +1861,44 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Success animation or icon
+              // Success icon with animation effect
               Container(
-                width: 80,
-                height: 80,
+                width: 90,
+                height: 90,
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withOpacity(0.3),
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF4CAF50).withOpacity(0.2),
+                      const Color(0xFF4CAF50).withOpacity(0.1),
+                    ],
+                  ),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.check_circle,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 40,
+                child: Container(
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4CAF50).withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF4CAF50),
+                    size: 48,
+                  ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+              Text(
+                '🎉',
+                style: const TextStyle(fontSize: 32),
+              ),
+              const SizedBox(height: 12),
               Text(
                 l10n.hydrationGoalAchieved,
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
+                  color: isDark ? Colors.white : Colors.black87,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1140,30 +1907,44 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
                 l10n.greatJobReachedGoal(provider.dailyGoal),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 14,
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  height: 1.4,
+                  fontSize: 15,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                  height: 1.5,
                 ),
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 24),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => Navigator.pop(context),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF4CAF50), Color(0xFF43A047)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF4CAF50).withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        l10n.awesome,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
-                  ),
-                ),
-                child: Text(
-                  l10n.awesome,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -1172,8 +1953,8 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
       ),
     );
 
-    // Auto close after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
+    // Auto close after 4 seconds
+    Future.delayed(const Duration(seconds: 4), () {
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
@@ -1181,117 +1962,135 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
   }
 
   void _showOptionsMenu() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) => Container(
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
+          color: isDark ? const Color(0xFF112240) : Colors.white,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Handle bar
             Container(
               margin: const EdgeInsets.only(top: 12),
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                color: isDark ? Colors.white24 : Colors.black12,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.flag_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 20,
-                ),
+            const SizedBox(height: 16),
+            // Title
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Text(
+                    'Options',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
               ),
-              title: Text(l10n.setDailyGoal),
-              subtitle: Consumer<WaterProvider>(
-                builder: (context, provider, child) =>
-                    Text(l10n.currentGoal(provider.dailyGoal)),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showGoalDialog();
-              },
             ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .secondaryContainer
-                      .withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.analytics,
-                    color: Theme.of(context).colorScheme.secondary, size: 20),
+            const SizedBox(height: 16),
+            // Options
+            Consumer<WaterProvider>(
+              builder: (context, provider, child) => _buildBottomSheetOption(
+                icon: Icons.flag_outlined,
+                iconColor: const Color(0xFF29B6F6),
+                iconBgColor: const Color(0xFF29B6F6).withOpacity(0.15),
+                title: l10n.setDailyGoal,
+                subtitle: l10n.currentGoal(provider.dailyGoal),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showGoalDialog();
+                },
+                isDark: isDark,
               ),
-              title: Text(l10n.viewStatistics),
-              subtitle: Text(l10n.seeHydrationStats),
+            ),
+            _buildBottomSheetOption(
+              icon: Icons.analytics_outlined,
+              iconColor: const Color(0xFF4CAF50),
+              iconBgColor: const Color(0xFF4CAF50).withOpacity(0.15),
+              title: l10n.viewStatistics,
+              subtitle: l10n.seeHydrationStats,
               onTap: () {
                 Navigator.pop(context);
                 _showStatsDialog();
               },
+              isDark: isDark,
             ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.refresh,
-                    color: Theme.of(context).colorScheme.primary, size: 20),
-              ),
-              title: Text(l10n.resetToday),
-              subtitle: Text(l10n.clearAllIntake),
-              onTap: () {
-                Navigator.pop(context);
-                _showResetDialog();
-              },
-            ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .tertiaryContainer
-                      .withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.history,
-                    color: Theme.of(context).colorScheme.tertiary, size: 20),
-              ),
-              title: Text(l10n.viewHistory),
-              subtitle: Text(l10n.seePastDaysIntake),
+            _buildBottomSheetOption(
+              icon: Icons.history,
+              iconColor: const Color(0xFF9C27B0),
+              iconBgColor: const Color(0xFF9C27B0).withOpacity(0.15),
+              title: l10n.viewHistory,
+              subtitle: l10n.seePastDaysIntake,
               onTap: () {
                 Navigator.pop(context);
                 _showHistoryDialog();
               },
+              isDark: isDark,
             ),
-            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Divider(height: 1),
+            ),
+            _buildBottomSheetOption(
+              icon: Icons.refresh,
+              iconColor: Colors.orange[600]!,
+              iconBgColor: Colors.orange.withOpacity(0.15),
+              title: l10n.resetToday,
+              subtitle: l10n.clearAllIntake,
+              onTap: () {
+                Navigator.pop(context);
+                _showResetDialog();
+              },
+              isDark: isDark,
+            ),
+            const SizedBox(height: 8),
+            // Close button
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => Navigator.pop(context),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Center(
+                      child: Text(
+                        l10n.close,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1299,96 +2098,255 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
   }
 
   void _showGoalDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final provider = Provider.of<WaterProvider>(context, listen: false);
     final l10n = AppLocalizations.of(context)!;
     final TextEditingController goalController = TextEditingController(
       text: provider.dailyGoal.toString(),
     );
 
+    // Quick select options
+    final quickOptions = [1500, 2000, 2500, 3000];
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          l10n.setDailyGoal,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Column(
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF112240) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
           mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF29B6F6).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.flag_outlined,
+                      color: Color(0xFF29B6F6),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    l10n.setDailyGoal,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
             Text(
               l10n.setYourDailyWaterGoal,
               style: TextStyle(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                  fontSize: 14,
+                  color: isDark ? Colors.white54 : Colors.black45,
+                ),
             ),
             const SizedBox(height: 20),
+              // Quick select
+              Text(
+                'Quick Select',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 10),
+              StatefulBuilder(
+                builder: (context, setState) => Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: quickOptions.map((amount) {
+                    final isSelected = goalController.text == amount.toString();
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          setState(() {
+                            goalController.text = amount.toString();
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFF29B6F6)
+                                : (isDark ? const Color(0xFF1A365D) : const Color(0xFFF5F9FF)),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF29B6F6)
+                                  : (isDark ? Colors.white12 : Colors.black12),
+                            ),
+                          ),
+                          child: Text(
+                            '${amount}ml',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isDark ? Colors.white70 : Colors.black54),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Custom input
+              Text(
+                'Or enter custom amount',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
             TextField(
               controller: goalController,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
               decoration: InputDecoration(
-                labelText: l10n.dailyWaterGoal,
                 hintText: 'e.g., 2000',
-                prefixIcon: const Icon(Icons.flag),
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.black26,
+                  ),
+                  suffixText: 'ml',
+                  suffixStyle: TextStyle(
+                    color: isDark ? Colors.white54 : Colors.black45,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.water_drop_outlined,
+                    color: Color(0xFF29B6F6),
+                  ),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF1A365D) : const Color(0xFFF5F9FF),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary, width: 2),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF29B6F6), width: 2),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 8),
             Text(
               l10n.recommendedAmount,
               style: TextStyle(
                 fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  color: isDark ? Colors.white38 : Colors.black38,
                 fontStyle: FontStyle.italic,
               ),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel,
+              const SizedBox(height: 24),
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.cancel,
                 style: TextStyle(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.6))),
-          ),
-          ElevatedButton(
-            onPressed: () {
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
               final newGoal = int.tryParse(goalController.text);
               if (newGoal != null && newGoal > 0) {
                 Navigator.pop(context);
                 _updateDailyGoal(newGoal);
-              } else {
-                // Snackbar removed - no longer showing error messages
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF29B6F6), Color(0xFF0288D1)],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF29B6F6).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
             child: Text(
               l10n.setGoalButton,
-              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
             ),
           ),
         ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   void _showStatsDialog() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final provider = Provider.of<WaterProvider>(context, listen: false);
     final l10n = AppLocalizations.of(context)!;
 
@@ -1397,8 +2355,16 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) => Center(
-        child: CircularProgressIndicator(
-            color: Theme.of(context).colorScheme.primary),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF112240) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const CircularProgressIndicator(
+            color: Color(0xFF29B6F6),
+          ),
+        ),
       ),
     );
 
@@ -1410,122 +2376,202 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
 
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
+          builder: (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF112240) : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.analytics,
-                    color: Theme.of(context).colorScheme.secondary),
-                const SizedBox(width: 8),
-                Text(
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4CAF50).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.analytics_outlined,
+                          color: Color(0xFF4CAF50),
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
                   l10n.hydrationStatistics,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
                 ),
               ],
             ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildStatRow(
+                  const SizedBox(height: 24),
+                  // Stats
+                  _buildStatCard(
                       l10n.currentStreakDays,
-                      '${stats['streakDays']} ${l10n.days}',
+                      '${stats['streakDays'] as int? ?? 0} ${l10n.days}',
                       Icons.local_fire_department,
-                      Colors.orange),
-                  _buildStatRow(
+                    Colors.orange,
+                    isDark,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildStatCard(
                       l10n.goalAchievement,
                       l10n.goalAchievementDays(
-                          stats['goalAchievedDays'], stats['totalDaysTracked']),
-                      Icons.flag,
-                      Colors.green),
-                  _buildStatRow(
+                          stats['goalAchievedDays'] as int? ?? 0,
+                          stats['totalDaysTracked'] as int? ?? 1),
+                    Icons.emoji_events_outlined,
+                    const Color(0xFF4CAF50),
+                    isDark,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildStatCard(
                       l10n.averageDailyIntake,
-                      '${stats['averageDailyIntake']}ml',
-                      Icons.analytics,
-                      Colors.blue),
-                  _buildStatRow(
+                      '${stats['averageDailyIntake'] as int? ?? 0}ml',
+                    Icons.show_chart,
+                    const Color(0xFF29B6F6),
+                    isDark,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildStatCard(
                       l10n.thisWeekTotal,
-                      '${stats['totalIntakeThisWeek']}ml',
+                      '${stats['totalIntakeThisWeek'] as int? ?? 0}ml',
                       Icons.calendar_view_week,
-                      Colors.purple),
-                  const SizedBox(height: 16),
+                    const Color(0xFF9C27B0),
+                    isDark,
+                  ),
+                  const SizedBox(height: 20),
+                  // Today's progress
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF29B6F6).withOpacity(0.15),
+                          const Color(0xFF29B6F6).withOpacity(0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFF29B6F6).withOpacity(0.3),
+                      ),
                     ),
                     child: Column(
                       children: [
                         Text(
                           l10n.todaysProgress,
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white70 : Colors.black54,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        LinearProgressIndicator(
-                          value: stats['completionPercentage'] / 100,
-                          backgroundColor: Colors.blue[200],
-                          valueColor: AlwaysStoppedAnimation(Colors.blue[600]),
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                          value: (stats['completionPercentage'] as int? ?? 0) / 100.0,
+                            backgroundColor: isDark ? const Color(0xFF1A365D) : const Color(0xFFE3F2FD),
+                            valueColor: const AlwaysStoppedAnimation(Color(0xFF29B6F6)),
+                            minHeight: 10,
                         ),
-                        const SizedBox(height: 8),
+                        ),
+                        const SizedBox(height: 12),
                         Text(
                           l10n.percentOfDailyGoal(
-                              stats['completionPercentage']),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.blue[700],
-                            fontWeight: FontWeight.w600,
+                              stats['completionPercentage'] as int? ?? 0),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF29B6F6),
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  // Close button
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(
+                          child: Text(
+                            l10n.close,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child:
-                    Text(l10n.close, style: TextStyle(color: Colors.blue[600])),
-              ),
-            ],
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context); // Close loading
-        // Snackbar removed - no longer showing error messages
       }
     }
   }
 
-  Widget _buildStatRow(String label, String value, IconData icon, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+  Widget _buildStatCard(String label, String value, IconData icon, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A365D) : const Color(0xFFF5F9FF),
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 20),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white70 : Colors.black54,
               ),
             ),
           ),
           Text(
             value,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
               color: color,
             ),
@@ -1536,6 +2582,7 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
   }
 
   void _showHistoryDialog() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final provider = Provider.of<WaterProvider>(context, listen: false);
     final l10n = AppLocalizations.of(context)!;
 
@@ -1543,8 +2590,17 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Colors.blue),
+      builder: (context) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF112240) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const CircularProgressIndicator(
+            color: Color(0xFF29B6F6),
+          ),
+        ),
       ),
     );
 
@@ -1556,173 +2612,637 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
 
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: [
-                Icon(Icons.history, color: Colors.purple[600]),
-                const SizedBox(width: 8),
-                Text(
-                  l10n.waterIntakeHistoryTitle,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
-              height: 300,
-              child: historyResult.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.water_drop_outlined,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            l10n.noHistoryAvailable,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            l10n.startTrackingHistory,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: historyResult.length,
-                      itemBuilder: (context, index) {
-                        final dayData = historyResult[index];
-                        final date = DateTime.parse(dayData['date']);
-                        final isGoalAchieved = dayData['goal_achieved'] == 1;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isGoalAchieved
-                                ? Colors.green[50]
-                                : Colors.grey[50],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isGoalAchieved
-                                  ? Colors.green[200]!
-                                  : Colors.grey[200]!,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                isGoalAchieved
-                                    ? Icons.check_circle
-                                    : Icons.water_drop,
-                                color: isGoalAchieved
-                                    ? Colors.green[600]
-                                    : Colors.blue[600],
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${date.day}/${date.month}/${date.year}',
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      l10n.drinksCount(dayData['totalDrinks']),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                '${dayData['totalIntake']}ml',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: isGoalAchieved
-                                      ? Colors.green[700]
-                                      : Colors.grey[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.close,
-                    style: TextStyle(color: Colors.purple[600])),
+          builder: (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
               ),
-            ],
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF112240) : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF9C27B0).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.history,
+                          color: Color(0xFF9C27B0),
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '${l10n.waterIntakeHistoryTitle} (30 Days)',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // Content
+                  Flexible(
+                    child: historyResult.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF29B6F6).withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.water_drop_outlined,
+                                    size: 48,
+                                    color: isDark ? Colors.white38 : Colors.black26,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  l10n.noHistoryAvailable,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? Colors.white70 : Colors.black54,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  l10n.startTrackingHistory,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: isDark ? Colors.white38 : Colors.black38,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: historyResult.length,
+                            separatorBuilder: (context, index) => const SizedBox(height: 10),
+                            itemBuilder: (context, index) {
+                              return _HistoryDayItem(
+                                dayData: historyResult[index],
+                                isDark: isDark,
+                                l10n: l10n,
+                                provider: provider,
+                                onEdit: (intake, date) => _showEditIntakeDialogForDate(intake, date),
+                                onDelete: (intake, date) => _showDeleteConfirmationForDate(intake, date),
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Close button
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(
+                          child: Text(
+                            l10n.close,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context); // Close loading
-        // Snackbar removed - no longer showing error messages
       }
     }
   }
 
-  void _showResetDialog() {
+  // History Day Item Widget with expandable breakdown
+  Widget _HistoryDayItem({
+    required Map<String, dynamic> dayData,
+    required bool isDark,
+    required AppLocalizations l10n,
+    required WaterProvider provider,
+    required Function(Map<String, dynamic>, DateTime) onEdit,
+    required Function(Map<String, dynamic>, DateTime) onDelete,
+  }) {
+    return _HistoryDayItemWidget(
+      dayData: dayData,
+      isDark: isDark,
+      l10n: l10n,
+      provider: provider,
+      onEdit: onEdit,
+      onDelete: onDelete,
+    );
+  }
+
+  // Edit intake dialog for previous days
+  void _showEditIntakeDialogForDate(Map<String, dynamic> intake, DateTime date) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+    final TextEditingController amountController = TextEditingController(
+      text: intake['amount'].toString(),
+    );
+    final TextEditingController typeController = TextEditingController(
+      text: intake['type'] ?? '',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF112240) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF29B6F6).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.edit_outlined,
+                      color: Color(0xFF29B6F6),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Edit Entry',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              // Amount field
+              Text(
+                l10n.amountMl,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'e.g., 250',
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.black26,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.water_drop_outlined,
+                    color: Color(0xFF29B6F6),
+                  ),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF1A365D) : const Color(0xFFF5F9FF),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF29B6F6), width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Type field
+              Text(
+                l10n.typeOptional,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: typeController,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                decoration: InputDecoration(
+                  hintText: l10n.egPostWorkout,
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.black26,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.label_outline,
+                    color: Color(0xFF29B6F6),
+                  ),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF1A365D) : const Color(0xFFF5F9FF),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF29B6F6), width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.cancel,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          final amount = int.tryParse(amountController.text);
+                          if (amount != null && amount > 0 && amount <= 2000) {
+                            Navigator.pop(context); // Close edit dialog
+                            final customType = typeController.text.trim().isNotEmpty
+                                ? typeController.text.trim()
+                                : null;
+                            final provider = Provider.of<WaterProvider>(context, listen: false);
+                            final success = await provider.updateWaterIntakeForDate(
+                              intakeId: intake['id'],
+                              amount: amount,
+                              date: date,
+                              customType: customType,
+                            );
+                            if (success && context.mounted) {
+                              // Close history dialog and show updated one
+                              Navigator.pop(context);
+                              _showHistoryDialog();
+                            }
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF29B6F6), Color(0xFF0288D1)],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF29B6F6).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Save',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Delete confirmation for previous days
+  void _showDeleteConfirmationForDate(Map<String, dynamic> intake, DateTime date) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          l10n.resetTodayTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          l10n.resetTodayConfirmation,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel, style: TextStyle(color: Colors.grey[600])),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF112240) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _resetTodaysIntake();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Warning icon
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.delete_outline,
+                  color: Colors.red[400],
+                  size: 32,
+                          ),
+                  ),
+                  const SizedBox(height: 20),
+              Text(
+                l10n.deleteWaterIntake,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.deleteWaterIntakeConfirm(
+                  intake['amount'].toString(),
+                  intake['time']?.toString() ?? 'N/A',
+                ),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(
+                          child: Text(
+                              l10n.cancel,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          Navigator.pop(context); // Close delete confirmation dialog
+                          final provider = Provider.of<WaterProvider>(context, listen: false);
+                          final success = await provider.removeWaterIntakeForDate(intake['id'], date);
+                          if (success && context.mounted) {
+                            // Close history dialog and show updated one
+                            Navigator.pop(context);
+                            _showHistoryDialog();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.red[400],
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.delete,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                  ),
+                ],
               ),
             ),
-            child:
-                Text(l10n.reset, style: const TextStyle(color: Colors.white)),
           ),
-        ],
+        );
+  }
+
+  void _showResetDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF112240) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Warning icon
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.refresh,
+                  color: Colors.orange[600],
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                l10n.resetTodayTitle,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.resetTodayConfirmation,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.cancel,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.pop(context);
+                          _resetTodaysIntake();
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[600],
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.orange.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.reset,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1736,7 +3256,347 @@ class _WaterDetailScreenState extends State<WaterDetailScreen>
   }
 }
 
-// Custom painter for the water bottle
+// Separate StatefulWidget for history day item
+class _HistoryDayItemWidget extends StatefulWidget {
+  final Map<String, dynamic> dayData;
+  final bool isDark;
+  final AppLocalizations l10n;
+  final WaterProvider provider;
+  final Function(Map<String, dynamic>, DateTime) onEdit;
+  final Function(Map<String, dynamic>, DateTime) onDelete;
+
+  const _HistoryDayItemWidget({
+    required this.dayData,
+    required this.isDark,
+    required this.l10n,
+    required this.provider,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  State<_HistoryDayItemWidget> createState() => _HistoryDayItemWidgetState();
+}
+
+class _HistoryDayItemWidgetState extends State<_HistoryDayItemWidget> {
+  bool _isExpanded = false;
+  List<Map<String, dynamic>> _intakeRecords = [];
+  bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final date = DateTime.parse(widget.dayData['date']);
+    final isGoalAchieved = widget.dayData['goal_achieved'] == 1;
+    final dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final dayName = dayNames[date.weekday - 1];
+    final monthName = monthNames[date.month - 1];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.isDark
+            ? const Color(0xFF1A365D)
+            : (isGoalAchieved
+                ? const Color(0xFFE8F5E9)
+                : const Color(0xFFF5F9FF)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isGoalAchieved
+              ? const Color(0xFF4CAF50).withOpacity(0.3)
+              : Colors.transparent,
+        ),
+      ),
+      child: Column(
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () async {
+                if (!_isExpanded) {
+                  setState(() {
+                    _isLoading = true;
+                    _isExpanded = true;
+                  });
+                  try {
+                    final records = await widget.provider.getIntakeForDate(date);
+                    setState(() {
+                      _intakeRecords = records;
+                      _isLoading = false;
+                    });
+                  } catch (e) {
+                    setState(() {
+                      _isLoading = false;
+                    });
+                  }
+                } else {
+                  setState(() {
+                    _isExpanded = false;
+                  });
+                }
+              },
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isGoalAchieved
+                            ? const Color(0xFF4CAF50).withOpacity(0.2)
+                            : const Color(0xFF29B6F6).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        isGoalAchieved
+                            ? Icons.check_circle
+                            : Icons.water_drop,
+                        color: isGoalAchieved
+                            ? const Color(0xFF4CAF50)
+                            : const Color(0xFF29B6F6),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '$dayName, ${date.day} $monthName ${date.year}',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: widget.isDark ? Colors.white : Colors.black87,
+                            ),
+                            softWrap: true,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.l10n.drinksCount(widget.dayData['total_drinks'] as int? ?? 0),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: widget.isDark ? Colors.white54 : Colors.black45,
+                            ),
+                            softWrap: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${widget.dayData['total_intake'] as int? ?? 0}ml',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isGoalAchieved
+                            ? const Color(0xFF4CAF50)
+                            : (widget.isDark ? Colors.white : Colors.black87),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      _isExpanded ? Icons.expand_less : Icons.expand_more,
+                      color: widget.isDark ? Colors.white54 : Colors.black45,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (_isExpanded)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: widget.isDark
+                    ? const Color(0xFF0F1B2E)
+                    : Colors.white,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(14),
+                  bottomRight: Radius.circular(14),
+                ),
+              ),
+              child: _isLoading
+                  ? const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF29B6F6),
+                        ),
+                      ),
+                    )
+                  : _intakeRecords.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Center(
+                            child: Text(
+                              'No intake records for this day',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: widget.isDark ? Colors.white54 : Colors.black45,
+                              ),
+                            ),
+                          ),
+                        )
+                      : Column(
+                          children: _intakeRecords.map((intake) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: widget.isDark
+                                    ? const Color(0xFF1A365D)
+                                    : const Color(0xFFF5F9FF),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF29B6F6).withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.water_drop,
+                                      color: Color(0xFF29B6F6),
+                                      size: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Flexible(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '${intake['amount']}ml',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: widget.isDark ? Colors.white : Colors.black87,
+                                          ),
+                                          maxLines: 1,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          intake['time'] ?? 'N/A',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: widget.isDark ? Colors.white54 : Colors.black45,
+                                          ),
+                                          maxLines: 1,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: () => widget.onEdit(intake, date),
+                                          borderRadius: BorderRadius.circular(20),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(8),
+                                            child: Icon(
+                                              Icons.edit_outlined,
+                                              size: 18,
+                                              color: const Color(0xFF29B6F6),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: () => widget.onDelete(intake, date),
+                                          borderRadius: BorderRadius.circular(20),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(8),
+                                            child: Icon(
+                                              Icons.delete_outline,
+                                              size: 18,
+                                              color: Colors.red[400],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// Custom painter for circular progress
+class CircularProgressPainter extends CustomPainter {
+  final double progress;
+  final double strokeWidth;
+  final Color backgroundColor;
+  final Color progressColor;
+
+  CircularProgressPainter({
+    required this.progress,
+    required this.strokeWidth,
+    required this.backgroundColor,
+    required this.progressColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    // Draw background circle
+    final backgroundPaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    
+    canvas.drawCircle(center, radius, backgroundPaint);
+
+    // Draw progress arc
+    final progressPaint = Paint()
+      ..color = progressColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    final sweepAngle = 2 * math.pi * progress.clamp(0.0, 1.0);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2, // Start from top
+      sweepAngle,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CircularProgressPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.progressColor != progressColor;
+  }
+}
+
+// Custom painter for the water bottle (kept for potential future use)
 class WaterBottlePainter extends CustomPainter {
   final double progress;
   final Color waterColor;
@@ -1757,62 +3617,101 @@ class WaterBottlePainter extends CustomPainter {
     final width = size.width;
     final height = size.height;
 
-    // Bottle shape
-    bottlePath.moveTo(width * 0.3, height * 0.1); // Top left
-    bottlePath.lineTo(width * 0.7, height * 0.1); // Top right
-    bottlePath.lineTo(width * 0.8, height * 0.2); // Shoulder right
-    bottlePath.lineTo(width * 0.8, height * 0.9); // Bottom right
-    bottlePath.lineTo(width * 0.2, height * 0.9); // Bottom left
-    bottlePath.lineTo(width * 0.2, height * 0.2); // Shoulder left
+    // Bottle shape - more refined
+    bottlePath.moveTo(width * 0.3, height * 0.08); // Top left
+    bottlePath.lineTo(width * 0.7, height * 0.08); // Top right
+    bottlePath.quadraticBezierTo(
+        width * 0.75, height * 0.12, width * 0.8, height * 0.18); // Shoulder right curve
+    bottlePath.lineTo(width * 0.8, height * 0.92); // Bottom right
+    bottlePath.quadraticBezierTo(
+        width * 0.8, height * 0.95, width * 0.75, height * 0.95); // Bottom right curve
+    bottlePath.lineTo(width * 0.25, height * 0.95); // Bottom left
+    bottlePath.quadraticBezierTo(
+        width * 0.2, height * 0.95, width * 0.2, height * 0.92); // Bottom left curve
+    bottlePath.lineTo(width * 0.2, height * 0.18); // Shoulder left
+    bottlePath.quadraticBezierTo(
+        width * 0.25, height * 0.12, width * 0.3, height * 0.08); // Shoulder left curve
     bottlePath.close();
 
-    // Draw bottle background
+    // Draw bottle background with gradient effect
     paint.color = bottleColor;
     canvas.drawPath(bottlePath, paint);
 
-    // Draw water fill
+    // Draw water fill with gradient
     if (progress > 0) {
-      final waterHeight =
-          (height * 0.7) * progress; // 70% of bottle height for water
-      final waterTop = height * 0.9 - waterHeight;
+      final waterHeight = (height * 0.75) * progress; // 75% of bottle height for water
+      final waterTop = height * 0.95 - waterHeight;
 
       final waterPath = Path();
-      waterPath.moveTo(width * 0.2, height * 0.9);
-      waterPath.lineTo(width * 0.8, height * 0.9);
+      waterPath.moveTo(width * 0.2, height * 0.95);
+      waterPath.lineTo(width * 0.8, height * 0.95);
       waterPath.lineTo(width * 0.8, waterTop);
 
       // Add wave effect at the top
-      final waveHeight = 8.0;
+      final waveHeight = 6.0;
+      final waveFrequency = 3.0;
 
-      for (double x = width * 0.8; x >= width * 0.2; x -= 2) {
+      for (double x = width * 0.8; x >= width * 0.2; x -= 1) {
         final normalizedX = (x - width * 0.2) / (width * 0.6);
-        final y = waterTop + math.sin(normalizedX * 2 * math.pi) * waveHeight;
+        final y = waterTop + math.sin(normalizedX * waveFrequency * math.pi) * waveHeight;
         waterPath.lineTo(x, y);
       }
 
-      waterPath.lineTo(width * 0.2, height * 0.9);
+      waterPath.lineTo(width * 0.2, height * 0.95);
       waterPath.close();
 
-      paint.color = waterColor;
+      // Draw water with gradient
+      final waterGradient = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          waterColor.withOpacity(0.9),
+          waterColor,
+          waterColor.withOpacity(0.7),
+        ],
+      );
+      paint.shader = waterGradient.createShader(
+        Rect.fromLTWH(width * 0.2, waterTop, width * 0.6, waterHeight),
+      );
       canvas.drawPath(waterPath, paint);
+      paint.shader = null;
     }
 
-    // Draw bottle outline
-    paint.color = Colors.blue[300]!;
+    // Draw bottle outline with better styling
+    paint.color = waterColor.withOpacity(0.4);
     paint.style = PaintingStyle.stroke;
-    paint.strokeWidth = 2;
+    paint.strokeWidth = 2.5;
     canvas.drawPath(bottlePath, paint);
 
-    // Draw bottle cap
+    // Draw bottle cap with gradient
     final capRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(width * 0.35, height * 0.05, width * 0.3, height * 0.08),
-      const Radius.circular(4),
+      Rect.fromLTWH(width * 0.35, height * 0.02, width * 0.3, height * 0.1),
+      const Radius.circular(6),
     );
     paint.style = PaintingStyle.fill;
-    paint.color = Colors.blue[400]!;
+    final capGradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        waterColor.withOpacity(0.6),
+        waterColor.withOpacity(0.4),
+      ],
+    );
+    paint.shader = capGradient.createShader(capRect.outerRect);
+    canvas.drawRRect(capRect, paint);
+    paint.shader = null;
+
+    // Cap outline
+    paint.color = waterColor.withOpacity(0.5);
+    paint.style = PaintingStyle.stroke;
+    paint.strokeWidth = 1.5;
     canvas.drawRRect(capRect, paint);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+
+
+
+

@@ -131,6 +131,42 @@ class WaterProvider with ChangeNotifier {
     }
   }
 
+  // Update water intake
+  Future<bool> updateWaterIntake(int intakeId, int amount, {String? customType}) async {
+    if (amount <= 0 || amount > 2000) {
+      _setError('Invalid water amount. Please enter 1-2000ml.');
+      return false;
+    }
+
+    try {
+      final type = customType ?? _getIntakeType(amount);
+      
+      final success = await WaterDatabase.updateWaterIntake(
+        intakeId: intakeId,
+        amount: amount,
+        type: type,
+      );
+
+      if (success) {
+        // Update daily summary
+        await WaterDatabase.updateDailySummary(DateTime.now(), _dailyGoal);
+
+        // Reload data
+        await loadTodaysData();
+
+        // Check if goal status changed
+        await WaterNotificationService.rescheduleRemindersIfNeeded();
+
+        _clearError();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _setError('Failed to update water intake: $e');
+      return false;
+    }
+  }
+
   // Remove water intake
   Future<bool> removeWaterIntake(int intakeId) async {
     try {
@@ -300,6 +336,88 @@ class WaterProvider with ChangeNotifier {
     }
   }
 
+  // Get intake records for a specific date
+  Future<List<Map<String, dynamic>>> getIntakeForDate(DateTime date) async {
+    try {
+      return await WaterDatabase.getIntakeForDate(date);
+    } catch (e) {
+      print('Error getting intake for date: $e');
+      return [];
+    }
+  }
+
+  // Update water intake for a specific date (for editing previous days)
+  Future<bool> updateWaterIntakeForDate({
+    required int intakeId,
+    required int amount,
+    required DateTime date,
+    String? customType,
+  }) async {
+    if (amount <= 0 || amount > 2000) {
+      _setError('Invalid water amount. Please enter 1-2000ml.');
+      return false;
+    }
+
+    try {
+      final type = customType ?? _getIntakeType(amount);
+      
+      final success = await WaterDatabase.updateWaterIntake(
+        intakeId: intakeId,
+        amount: amount,
+        type: type,
+      );
+
+      if (success) {
+        // Update daily summary for that date
+        final goal = await WaterDatabase.getDailyGoal();
+        await WaterDatabase.updateDailySummary(date, goal);
+
+        // Reload today's data if editing today
+        if (date.year == DateTime.now().year &&
+            date.month == DateTime.now().month &&
+            date.day == DateTime.now().day) {
+          await loadTodaysData();
+        }
+
+        _clearError();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _setError('Failed to update water intake: $e');
+      return false;
+    }
+  }
+
+  // Remove water intake for a specific date (for editing previous days)
+  Future<bool> removeWaterIntakeForDate(int intakeId, DateTime date) async {
+    try {
+      final success = await WaterDatabase.removeWaterIntake(intakeId);
+
+      if (success) {
+        // Update daily summary for that date
+        final goal = await WaterDatabase.getDailyGoal();
+        await WaterDatabase.updateDailySummary(date, goal);
+
+        // Reload today's data if editing today
+        if (date.year == DateTime.now().year &&
+            date.month == DateTime.now().month &&
+            date.day == DateTime.now().day) {
+          await loadTodaysData();
+        }
+
+        _clearError();
+        return true;
+      } else {
+        _setError('Intake record not found');
+        return false;
+      }
+    } catch (e) {
+      _setError('Failed to remove water intake: $e');
+      return false;
+    }
+  }
+
   // Get hydration reminders
   Map<String, String> getHydrationReminders() {
     final now = DateTime.now();
@@ -346,10 +464,10 @@ class WaterProvider with ChangeNotifier {
 
   // Get intake type based on amount
   String _getIntakeType(int amount) {
-    if (amount <= 150) return 'Small sip';
-    if (amount <= 250) return 'Regular drink';
-    if (amount <= 400) return 'Big gulp';
-    if (amount <= 600) return 'Large drink';
+    if (amount <= 150) return 'Small Sip';
+    if (amount <= 250) return 'Regular Drink';
+    if (amount <= 400) return 'Big Gulp';
+    if (amount <= 600) return 'Large Drink';
     return 'Extra large';
   }
 
