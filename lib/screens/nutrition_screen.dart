@@ -30,6 +30,7 @@ class _NutritionDetailScreenState extends State<NutritionDetailScreen>
   bool _showAddFoodDrawer = false;
   bool _isAddingFood = false;
   int _selectedHistoryIndex = 0;
+  final Set<String> _expandedMealIds = {}; // Track which meal breakdowns are expanded
 
   @override
   void initState() {
@@ -113,8 +114,14 @@ class _NutritionDetailScreenState extends State<NutritionDetailScreen>
     required double carbs,
     String mealType = 'custom',
     String source = 'manual',
+    List<DetectedFoodItemBreakdown>? breakdown,
   }) async {
-    if (_isAddingFood) return;
+    debugPrint('_addFood called: $name, $calories cal, breakdown: ${breakdown?.length ?? 0} items');
+    
+    if (_isAddingFood) {
+      debugPrint('Already adding food, skipping');
+      return;
+    }
 
     setState(() => _isAddingFood = true);
 
@@ -129,9 +136,12 @@ class _NutritionDetailScreenState extends State<NutritionDetailScreen>
         time: DateTime.now().toString(),
         createdAt: DateTime.now(),
         source: source,
+        breakdown: breakdown,
       );
 
+      debugPrint('Created meal object, calling addMeal');
       await context.read<NutritionProvider>().addMeal(meal);
+      debugPrint('Meal added to provider successfully');
 
       if (mounted) {
         _toggleAddFoodDrawer();
@@ -139,8 +149,9 @@ class _NutritionDetailScreenState extends State<NutritionDetailScreen>
         _progressAnimationController.reset();
         _progressAnimationController.forward();
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Error adding food: $e');
+      debugPrint('Stack trace: $stackTrace');
     } finally {
       if (mounted) {
         setState(() => _isAddingFood = false);
@@ -294,6 +305,7 @@ class _NutritionDetailScreenState extends State<NutritionDetailScreen>
                           onClose: _toggleAddFoodDrawer,
                           onAddFood: _addFood,
                           isLoading: _isAddingFood,
+                          parentContext: context, // Pass parent context for dialogs
                         ),
                       ),
                     ),
@@ -953,139 +965,328 @@ class _NutritionDetailScreenState extends State<NutritionDetailScreen>
 
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _showMealOptions(meal, onEdit, onDelete),
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[50],
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey[200]!,
-              width: 1,
-            ),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[50],
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey[200]!,
+            width: 1,
           ),
-          child: Row(
-            children: [
-              // Meal type indicator
-              Container(
-                width: 4,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: typeColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Meal type indicator
+            Container(
+              width: 4,
+              height: 50,
+              decoration: BoxDecoration(
+                color: typeColor,
+                borderRadius: BorderRadius.circular(2),
               ),
-              const SizedBox(width: 14),
-              // Meal info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            meal.name,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isAIMeal)
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: nutritionColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  meal.source == 'image' ? Icons.camera_alt : Icons.auto_awesome,
-                                  size: 10,
-                                  color: nutritionColor,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  'AI',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: nutritionColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          meal.time,
+            ),
+            const SizedBox(width: 14),
+            // Meal info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          meal.name,
                           style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? Colors.white54 : Colors.black45,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : Colors.black87,
                           ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                      ),
+                      if (isAIMeal) ...[
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: typeColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(6),
+                            color: nutritionColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text(
-                            _formatMealType(meal.mealType),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: typeColor,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                meal.source == 'image' ? Icons.camera_alt : Icons.auto_awesome,
+                                size: 10,
+                                color: nutritionColor,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'AI',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: nutritionColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        meal.time,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white54 : Colors.black45,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: typeColor.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _formatMealType(meal.mealType),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: typeColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Nutrition chips
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      _buildNutrientChip('${meal.calories} cal', Colors.red[400]!, isDark),
+                      _buildNutrientChip('P: ${meal.protein.round()}g', const Color(0xFFE91E63), isDark),
+                      _buildNutrientChip('F: ${meal.fat.round()}g', const Color(0xFFFF9800), isDark),
+                      _buildNutrientChip('C: ${meal.carbs.round()}g', const Color(0xFF2196F3), isDark),
+                    ],
+                  ),
+                  // Show breakdown if available
+                  if (meal.breakdown != null && meal.breakdown!.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    // Nutrition chips
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        _buildNutrientChip('${meal.calories} cal', Colors.red[400]!, isDark),
-                        _buildNutrientChip('P: ${meal.protein.round()}g', const Color(0xFFE91E63), isDark),
-                        _buildNutrientChip('F: ${meal.fat.round()}g', const Color(0xFFFF9800), isDark),
-                        _buildNutrientChip('C: ${meal.carbs.round()}g', const Color(0xFF2196F3), isDark),
-                      ],
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          final mealId = meal.id ?? meal.name;
+                          if (_expandedMealIds.contains(mealId)) {
+                            _expandedMealIds.remove(mealId);
+                          } else {
+                            _expandedMealIds.add(mealId);
+                          }
+                        });
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: nutritionColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: nutritionColor.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _expandedMealIds.contains(meal.id ?? meal.name)
+                                  ? Icons.expand_less
+                                  : Icons.expand_more,
+                              size: 14,
+                              color: nutritionColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.list,
+                              size: 12,
+                              color: nutritionColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${meal.breakdown!.length} items',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: nutritionColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
+                    // Expandable breakdown section
+                    if (_expandedMealIds.contains(meal.id ?? meal.name)) ...[
+                      const SizedBox(height: 8),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 200),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: meal.breakdown!.map((item) => _buildBreakdownItem(
+                                  item,
+                                  isDark,
+                                  nutritionColor,
+                                )).toList(),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
+                ],
+              ),
+            ),
+            // More options - aligned to top
+            Padding(
+              padding: const EdgeInsets.only(top: 2, left: 8),
+              child: GestureDetector(
+                onTap: () => _showMealOptions(meal, onEdit, onDelete),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.more_vert,
+                    size: 18,
+                    color: isDark ? Colors.white60 : Colors.black45,
+                  ),
                 ),
               ),
-              // More options
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBreakdownItem(
+    DetectedFoodItemBreakdown item,
+    bool isDark,
+    Color nutritionColor,
+  ) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.03) : Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[300]!,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: screenWidth * 0.032,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                 ),
-                child: Icon(
-                  Icons.more_vert,
-                  size: 18,
-                  color: isDark ? Colors.white60 : Colors.black45,
+              ),
+              if (item.quantityDescription.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: nutritionColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    item.quantityDescription,
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.028,
+                      color: nutritionColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              Text(
+                '${item.estimatedWeight}g',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.03,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                ),
+              ),
+              Text(
+                '•',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.03,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                ),
+              ),
+              Text(
+                '${item.calories} kcal',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.03,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                ),
+              ),
+              Text(
+                '•',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.03,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                ),
+              ),
+              Text(
+                'P: ${item.protein.toStringAsFixed(1)}g',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.03,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                ),
+              ),
+              Text(
+                'F: ${item.fat.toStringAsFixed(1)}g',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.03,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                ),
+              ),
+              Text(
+                'C: ${item.carbs.toStringAsFixed(1)}g',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.03,
+                  color: isDark ? Colors.white60 : Colors.black54,
                 ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1207,6 +1408,114 @@ class _NutritionDetailScreenState extends State<NutritionDetailScreen>
             const SizedBox(height: 16),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showBreakdownDialog(Meal meal) {
+    if (meal.breakdown == null || meal.breakdown!.isEmpty) return;
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.list, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text('Item Breakdown'),
+          ],
+        ),
+        content: Container(
+          width: double.maxFinite,
+          constraints: const BoxConstraints(maxHeight: 400),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  meal.name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: screenWidth * 0.04,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...meal.breakdown!.map((item) => Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey[200]!,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.name,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: screenWidth * 0.038,
+                                  ),
+                                ),
+                              ),
+                              if (item.quantityDescription.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.secondaryContainer,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    item.quantityDescription,
+                                    style: TextStyle(
+                                      fontSize: screenWidth * 0.032,
+                                      color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Weight: ${item.estimatedWeight}g',
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.035,
+                              color: isDark ? Colors.white60 : Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${item.calories} kcal • P: ${item.protein.toStringAsFixed(1)}g • F: ${item.fat.toStringAsFixed(1)}g • C: ${item.carbs.toStringAsFixed(1)}g',
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.035,
+                              color: isDark ? Colors.white60 : Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }

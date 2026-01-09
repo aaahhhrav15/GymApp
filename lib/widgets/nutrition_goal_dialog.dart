@@ -28,11 +28,11 @@ class _NutritionGoalDialogState extends State<NutritionGoalDialog> {
     _caloriesController =
         TextEditingController(text: widget.currentGoals.calories.toString());
     _proteinController =
-        TextEditingController(text: widget.currentGoals.protein.toString());
+        TextEditingController(text: widget.currentGoals.protein.toInt().toString());
     _fatController =
-        TextEditingController(text: widget.currentGoals.fat.toString());
+        TextEditingController(text: widget.currentGoals.fat.toInt().toString());
     _carbsController =
-        TextEditingController(text: widget.currentGoals.carbs.toString());
+        TextEditingController(text: widget.currentGoals.carbs.toInt().toString());
   }
 
   @override
@@ -46,13 +46,12 @@ class _NutritionGoalDialogState extends State<NutritionGoalDialog> {
 
   void _saveGoals() {
     try {
-      final calories = int.parse(_caloriesController.text);
-      final protein = int.parse(_proteinController.text);
-      final fat = int.parse(_fatController.text);
-      final carbs = int.parse(_carbsController.text);
+      final calories = int.parse(_caloriesController.text.trim());
+      final protein = int.parse(_proteinController.text.trim());
+      final fat = int.parse(_fatController.text.trim());
+      final carbs = int.parse(_carbsController.text.trim());
 
       if (calories <= 0 || protein < 0 || fat < 0 || carbs < 0) {
-        // Snackbar removed - no longer showing error messages
         return;
       }
 
@@ -66,270 +65,301 @@ class _NutritionGoalDialogState extends State<NutritionGoalDialog> {
       widget.onSave(newGoals);
       Navigator.of(context).pop();
     } catch (e) {
-      // Snackbar removed - no longer showing error messages
+      // Error handling
     }
-  }
-
-  void _showErrorSnackBar(String message) {
-    // Snackbars removed - no longer showing error messages
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final screenWidth = screenSize.width;
-    final screenHeight = screenSize.height;
-
-    // Responsive sizing
-    final dialogPadding = screenWidth * 0.05; // 5% of screen width
-    final borderRadius = screenWidth * 0.05; // 5% of screen width
-    final iconSize = screenWidth * 0.05; // 5% of screen width
-    final headerFontSize = screenWidth * 0.045; // 4.5% of screen width
-    final bodyFontSize = screenWidth * 0.035; // 3.5% of screen width
-    final smallFontSize = screenWidth * 0.03; // 3% of screen width
-    final spacingSmall = screenHeight * 0.015; // 1.5% of screen height
-    final spacingMedium = screenHeight * 0.025; // 2.5% of screen height
-    final spacingLarge = screenHeight * 0.03; // 3% of screen height
-    final buttonHeight = screenHeight * 0.06; // 6% of screen height
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final nutritionColor = isDark ? const Color(0xFF66BB6A) : const Color(0xFF4CAF50);
 
     return Dialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(borderRadius),
-      ),
+      backgroundColor: Colors.transparent,
       child: Container(
-        padding: EdgeInsets.all(dialogPadding),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(screenWidth * 0.02),
-                  decoration: BoxDecoration(
-                    color: Colors.green[50],
-                    borderRadius: BorderRadius.circular(screenWidth * 0.025),
-                  ),
-                  child: Icon(
-                    Icons.track_changes,
-                    color: Colors.green[600],
-                    size: iconSize,
-                  ),
-                ),
-                SizedBox(width: spacingSmall),
-                Expanded(
-                  child: Text(
-                    'Set Daily Goals',
-                    style: TextStyle(
-                      fontSize: headerFontSize,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.close,
-                      color: Colors.grey[600], size: iconSize),
-                ),
-              ],
-            ),
-
-            SizedBox(height: spacingMedium),
-
-            Text(
-              'Set your daily nutrition targets:',
-              style: TextStyle(
-                fontSize: bodyFontSize,
-                color: Colors.black54,
-              ),
-            ),
-
-            SizedBox(height: spacingMedium),
-
-            // Calories
-            _buildGoalField(
-              label: 'Calories',
-              controller: _caloriesController,
-              suffix: 'kcal',
-              icon: Icons.local_fire_department,
-              color: Colors.orange,
-              context: context,
-            ),
-
-            SizedBox(height: spacingSmall),
-
-            // Protein
-            _buildGoalField(
-              label: 'Protein',
-              controller: _proteinController,
-              suffix: 'g',
-              icon: Icons.fitness_center,
-              color: Colors.blue,
-              context: context,
-            ),
-
-            SizedBox(height: spacingSmall),
-
-            // Fat
-            _buildGoalField(
-              label: 'Fat',
-              controller: _fatController,
-              suffix: 'g',
-              icon: Icons.opacity,
-              color: Colors.amber,
-              context: context,
-            ),
-
-            SizedBox(height: spacingSmall),
-
-            // Carbs
-            _buildGoalField(
-              label: 'Carbohydrates',
-              controller: _carbsController,
-              suffix: 'g',
-              icon: Icons.grain,
-              color: Colors.green,
-              context: context,
-            ),
-
-            SizedBox(height: spacingLarge),
-
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      padding:
-                          EdgeInsets.symmetric(vertical: buttonHeight * 0.2),
-                      side: BorderSide(color: Colors.grey[300]!),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                      ),
-                    ),
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: bodyFontSize,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: spacingSmall),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _saveGoals,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[600],
-                      foregroundColor: Colors.white,
-                      padding:
-                          EdgeInsets.symmetric(vertical: buttonHeight * 0.2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                      ),
-                    ),
-                    child: Text(
-                      'Save Goals',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: bodyFontSize,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+        constraints: BoxConstraints(
+          maxHeight: screenHeight * 0.85,
+          maxWidth: screenWidth * 0.9,
+        ),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1A2E1D) : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
           ],
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: nutritionColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.track_changes_rounded,
+                      color: nutritionColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Set Daily Goals',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Set your daily nutrition targets',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Calories
+              _buildModernGoalField(
+                label: 'Calories',
+                controller: _caloriesController,
+                suffix: 'kcal',
+                icon: Icons.local_fire_department_rounded,
+                color: Colors.orange,
+                isDark: isDark,
+                screenWidth: screenWidth,
+              ),
+              const SizedBox(height: 16),
+
+              // Macros in a row
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildModernGoalField(
+                      label: 'Protein',
+                      controller: _proteinController,
+                      suffix: 'g',
+                      icon: Icons.fitness_center_rounded,
+                      color: const Color(0xFFE91E63),
+                      isDark: isDark,
+                      screenWidth: screenWidth,
+                      isCompact: true,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildModernGoalField(
+                      label: 'Fat',
+                      controller: _fatController,
+                      suffix: 'g',
+                      icon: Icons.opacity_rounded,
+                      color: const Color(0xFFFF9800),
+                      isDark: isDark,
+                      screenWidth: screenWidth,
+                      isCompact: true,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildModernGoalField(
+                      label: 'Carbs',
+                      controller: _carbsController,
+                      suffix: 'g',
+                      icon: Icons.grain_rounded,
+                      color: const Color(0xFF2196F3),
+                      isDark: isDark,
+                      screenWidth: screenWidth,
+                      isCompact: true,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 32),
+
+              // Action buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: BorderSide(
+                          color: isDark ? Colors.white24 : Colors.grey[300]!,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: isDark ? Colors.white70 : Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: _saveGoals,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: nutritionColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Save Goals',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildGoalField({
+  Widget _buildModernGoalField({
     required String label,
     required TextEditingController controller,
     required String suffix,
     required IconData icon,
     required Color color,
-    required BuildContext context,
+    required bool isDark,
+    required double screenWidth,
+    bool isCompact = false,
   }) {
-    final screenSize = MediaQuery.of(context).size;
-    final screenWidth = screenSize.width;
-    final screenHeight = screenSize.height;
-
-    // Responsive sizing for field
-    final iconSize = screenWidth * 0.04; // 4% of screen width
-    final labelFontSize = screenWidth * 0.03; // 3% of screen width
-    final inputFontSize = screenWidth * 0.035; // 3.5% of screen width
-    final spacingSmall = screenWidth * 0.03; // 3% of screen width
-    final spacingTiny = screenHeight * 0.005; // 0.5% of screen height
-    final borderRadius = screenWidth * 0.02; // 2% of screen width
-    final containerPadding = screenWidth * 0.02; // 2% of screen width
-    final inputPadding = screenWidth * 0.03; // 3% of screen width
-
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: EdgeInsets.all(containerPadding),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(borderRadius),
-          ),
-          child: Icon(
-            icon,
-            color: color,
-            size: iconSize,
-          ),
-        ),
-        SizedBox(width: spacingSmall),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
+        Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(isCompact ? 4 : 6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: isCompact ? 14 : 16,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: labelFontSize,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black54,
+                  fontSize: isCompact ? 12 : 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black87,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
-              SizedBox(height: spacingTiny),
-              TextFormField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-                style: TextStyle(fontSize: inputFontSize),
-                decoration: InputDecoration(
-                  hintText: '0',
-                  suffixText: suffix,
-                  suffixStyle: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: labelFontSize,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(borderRadius),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(borderRadius),
-                    borderSide: BorderSide(color: color, width: 2),
-                  ),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: inputPadding,
-                    vertical: inputPadding * 0.67,
-                  ),
-                ),
-              ),
-            ],
+            ),
+          ],
+        ),
+        SizedBox(height: isCompact ? 6 : 8),
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+          ],
+          textAlign: TextAlign.left,
+          style: TextStyle(
+            fontSize: isCompact ? 14 : 16,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : Colors.black87,
           ),
+          decoration: InputDecoration(
+            hintText: '0',
+            hintStyle: TextStyle(
+              color: isDark ? Colors.white30 : Colors.black26,
+              fontSize: isCompact ? 14 : 16,
+            ),
+            suffixText: suffix,
+            suffixStyle: TextStyle(
+              color: isDark ? Colors.white60 : Colors.black54,
+              fontSize: isCompact ? 12 : 14,
+              fontWeight: FontWeight.w500,
+            ),
+            filled: true,
+            fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: isDark ? Colors.white12 : Colors.grey[300]!,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: isDark ? Colors.white12 : Colors.grey[300]!,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: color,
+                width: 2,
+              ),
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 10 : 16,
+              vertical: isCompact ? 10 : 14,
+            ),
+            isDense: isCompact,
+          ),
+          scrollPadding: EdgeInsets.zero,
+          textInputAction: TextInputAction.next,
         ),
       ],
     );

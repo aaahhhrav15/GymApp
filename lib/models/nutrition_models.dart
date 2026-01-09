@@ -57,6 +57,7 @@ class Meal {
   final String time;
   final DateTime createdAt;
   final String source;
+  final List<DetectedFoodItemBreakdown>? breakdown; // Optional breakdown items
 
   Meal({
     this.id,
@@ -69,9 +70,17 @@ class Meal {
     required this.time,
     required this.createdAt,
     this.source = 'manual',
+    this.breakdown,
   });
 
   factory Meal.fromJson(Map<String, dynamic> json) {
+    List<DetectedFoodItemBreakdown>? breakdown;
+    if (json['breakdown'] != null) {
+      breakdown = (json['breakdown'] as List)
+          .map((item) => DetectedFoodItemBreakdown.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+    
     return Meal(
       id: json['id'],
       name: json['name'] ?? '',
@@ -85,6 +94,7 @@ class Meal {
           ? DateTime.tryParse(json['created_at']) ?? DateTime.now()
           : DateTime.now(),
       source: json['source'] ?? 'manual',
+      breakdown: breakdown,
     );
   }
 
@@ -100,6 +110,7 @@ class Meal {
       'time': time,
       'created_at': createdAt.toIso8601String(),
       'source': source,
+      'breakdown': breakdown?.map((item) => item.toJson()).toList(),
     };
   }
 
@@ -114,6 +125,7 @@ class Meal {
     String? time,
     DateTime? createdAt,
     String? source,
+    List<DetectedFoodItemBreakdown>? breakdown,
   }) {
     return Meal(
       id: id ?? this.id,
@@ -126,6 +138,7 @@ class Meal {
       time: time ?? this.time,
       createdAt: createdAt ?? this.createdAt,
       source: source ?? this.source,
+      breakdown: breakdown ?? this.breakdown,
     );
   }
 }
@@ -322,6 +335,7 @@ class DetectedFoodItem {
   final double protein;
   final double fat;
   final double carbs;
+  final double? fiber;
   final int confidence;
 
   DetectedFoodItem({
@@ -331,6 +345,7 @@ class DetectedFoodItem {
     required this.protein,
     required this.fat,
     required this.carbs,
+    this.fiber,
     required this.confidence,
   });
 
@@ -342,6 +357,9 @@ class DetectedFoodItem {
       protein: double.tryParse(json['protein'].toString()) ?? 0.0,
       fat: double.tryParse(json['fat'].toString()) ?? 0.0,
       carbs: double.tryParse(json['carbs'].toString()) ?? 0.0,
+      fiber: json['fiber'] != null
+          ? double.tryParse(json['fiber'].toString())
+          : null,
       confidence: json['confidence'] ?? 0,
     );
   }
@@ -354,6 +372,7 @@ class DetectedFoodItem {
       'protein': protein,
       'fat': fat,
       'carbs': carbs,
+      'fiber': fiber,
       'confidence': confidence,
     };
   }
@@ -371,6 +390,74 @@ class DetectedFoodItem {
       source: 'image',
     );
   }
+}
+
+// Individual item in breakdown (with quantity description)
+class DetectedFoodItemBreakdown {
+  final String name;
+  final String quantityDescription;
+  final int estimatedWeight;
+  final int calories;
+  final double protein;
+  final double fat;
+  final double carbs;
+  final double? fiber;
+  final int confidence;
+
+  DetectedFoodItemBreakdown({
+    required this.name,
+    required this.quantityDescription,
+    required this.estimatedWeight,
+    required this.calories,
+    required this.protein,
+    required this.fat,
+    required this.carbs,
+    this.fiber,
+    required this.confidence,
+  });
+
+  factory DetectedFoodItemBreakdown.fromJson(Map<String, dynamic> json) {
+    return DetectedFoodItemBreakdown(
+      name: json['name'] ?? '',
+      quantityDescription: json['quantity_description'] ?? '',
+      estimatedWeight: json['estimated_weight'] ?? 100,
+      calories: json['calories'] ?? 0,
+      protein: double.tryParse(json['protein'].toString()) ?? 0.0,
+      fat: double.tryParse(json['fat'].toString()) ?? 0.0,
+      carbs: double.tryParse(json['carbs'].toString()) ?? 0.0,
+      fiber: json['fiber'] != null
+          ? double.tryParse(json['fiber'].toString())
+          : null,
+      confidence: json['confidence'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'quantity_description': quantityDescription,
+      'estimated_weight': estimatedWeight,
+      'calories': calories,
+      'protein': protein,
+      'fat': fat,
+      'carbs': carbs,
+      'fiber': fiber,
+      'confidence': confidence,
+    };
+  }
+}
+
+// Response model for multiple items
+class DetectedFoodItemsResponse {
+  final DetectedFoodItem mainItem;
+  final List<DetectedFoodItemBreakdown>? items; // null if single item
+
+  DetectedFoodItemsResponse({
+    required this.mainItem,
+    this.items,
+  });
+
+  bool get hasMultipleItems => items != null && items!.isNotEmpty;
 }
 
 enum MealType {

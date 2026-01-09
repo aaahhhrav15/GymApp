@@ -56,8 +56,9 @@ class NutritionProvider extends ChangeNotifier {
     String path = join(await getDatabasesPath(), 'nutrition_database.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createTables,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -88,7 +89,8 @@ class NutritionProvider extends ChangeNotifier {
         time TEXT NOT NULL,
         date TEXT NOT NULL,
         source TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        breakdown TEXT
       )
     ''');
 
@@ -106,12 +108,36 @@ class NutritionProvider extends ChangeNotifier {
     ''');
   }
 
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    debugPrint('Database upgrade from version $oldVersion to $newVersion');
+    if (oldVersion < 2) {
+      // Add breakdown column to meals table
+      try {
+        await db.execute('ALTER TABLE meals ADD COLUMN breakdown TEXT');
+        debugPrint('Successfully added breakdown column to meals table');
+      } catch (e) {
+        debugPrint('Error adding breakdown column (may already exist): $e');
+        // Check if column already exists by trying to query it
+        try {
+          await db.rawQuery('SELECT breakdown FROM meals LIMIT 1');
+          debugPrint('Breakdown column already exists');
+        } catch (e2) {
+          debugPrint('Breakdown column does not exist and could not be added: $e2');
+          // If column doesn't exist and can't be added, we'll handle null values
+        }
+      }
+    }
+  }
+
   // Initialize provider
   Future<void> initialize() async {
     _isLoading = true;
     notifyListeners();
 
     try {
+      // Ensure breakdown column exists on initialization
+      await _ensureBreakdownColumn();
+      
       await _loadNutritionGoals();
       await _loadMealsForDate(_selectedDate);
       await _loadWeeklyData();
@@ -236,6 +262,27 @@ class NutritionProvider extends ChangeNotifier {
     }
   }
 
+  // Reset selected date to today (used when returning to home page)
+  Future<void> resetToToday() async {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    if (_selectedDate == today) return;
+
+    _isLoading = true;
+    _selectedDate = today;
+    notifyListeners();
+
+    try {
+      await _loadNutritionGoals();
+      await _loadMealsForDate(_selectedDate);
+      _calculateTotals();
+    } catch (e) {
+      debugPrint('Error resetting to today: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Check if data is from today, if not reset for new day
   void _checkAndResetForNewDay() {
     final today = DateTime.now().toIso8601String().split('T')[0];
@@ -310,20 +357,34 @@ class NutritionProvider extends ChangeNotifier {
         orderBy: 'created_at DESC',
       );
 
-      _meals = maps
-          .map((map) => Meal(
-                id: map['id'].toString(),
-                name: map['name'],
-                calories: map['calories'],
-                protein: map['protein'],
-                fat: map['fat'],
-                carbs: map['carbs'],
-                mealType: map['meal_type'],
-                time: map['time'],
-                createdAt: DateTime.parse(map['created_at']),
-                source: map['source'],
-              ))
-          .toList();
+      _meals = maps.map((map) {
+        // Parse breakdown from JSON if available
+        List<DetectedFoodItemBreakdown>? breakdown;
+        if (map['breakdown'] != null && map['breakdown'].toString().isNotEmpty) {
+          try {
+            final breakdownList = jsonDecode(map['breakdown']) as List;
+            breakdown = breakdownList
+                .map((item) => DetectedFoodItemBreakdown.fromJson(item as Map<String, dynamic>))
+                .toList();
+          } catch (e) {
+            debugPrint('Error parsing breakdown: $e');
+          }
+        }
+
+        return Meal(
+          id: map['id'].toString(),
+          name: map['name'],
+          calories: map['calories'],
+          protein: map['protein'],
+          fat: map['fat'],
+          carbs: map['carbs'],
+          mealType: map['meal_type'],
+          time: map['time'],
+          createdAt: DateTime.parse(map['created_at']),
+          source: map['source'],
+          breakdown: breakdown,
+        );
+      }).toList();
     } catch (e) {
       debugPrint('Error loading meals: $e');
       _meals = [];
@@ -351,19 +412,68 @@ class NutritionProvider extends ChangeNotifier {
     }
   }
 
+  // Check if breakdown column exists in meals table
+  Future<bool> _checkBreakdownColumnExists() async {
+    try {
+      final db = await database;
+      final result = await db.rawQuery(
+        "PRAGMA table_info(meals)",
+      );
+      return result.any((column) => column['name'] == 'breakdown');
+    } catch (e) {
+      debugPrint('Error checking for breakdown column: $e');
+      return false;
+    }
+  }
+
+  // Add breakdown column if it doesn't exist
+  Future<void> _ensureBreakdownColumn() async {
+    final columnExists = await _checkBreakdownColumnExists();
+    if (!columnExists) {
+      try {
+        final db = await database;
+        await db.execute('ALTER TABLE meals ADD COLUMN breakdown TEXT');
+        debugPrint('Successfully added breakdown column to existing meals table');
+      } catch (e) {
+        debugPrint('Error adding breakdown column: $e');
+      }
+    }
+  }
+
   // Add meal
   Future<void> addMeal(Meal meal) async {
+    debugPrint('addMeal called: ${meal.name}, breakdown: ${meal.breakdown?.length ?? 0} items');
     _isLoading = true;
     notifyListeners();
 
     try {
       final db = await database;
+      
+      // Ensure breakdown column exists before inserting
+      await _ensureBreakdownColumn();
+      
       final mealWithTime = meal.copyWith(
         time: _getCurrentTimeString(),
         createdAt: DateTime.now(),
       );
 
-      final id = await db.insert('meals', {
+      // Serialize breakdown to JSON if available
+      String? breakdownJson;
+      if (mealWithTime.breakdown != null && mealWithTime.breakdown!.isNotEmpty) {
+        try {
+          breakdownJson = jsonEncode(
+            mealWithTime.breakdown!.map((item) => item.toJson()).toList(),
+          );
+          debugPrint('Breakdown serialized: ${breakdownJson.length} chars');
+        } catch (e) {
+          debugPrint('Error serializing breakdown: $e');
+        }
+      }
+
+      debugPrint('Inserting meal into database: ${mealWithTime.name}');
+      
+      // Build insert map
+      final insertMap = {
         'name': mealWithTime.name,
         'calories': mealWithTime.calories,
         'protein': mealWithTime.protein,
@@ -374,16 +484,28 @@ class NutritionProvider extends ChangeNotifier {
         'date': _selectedDate,
         'source': mealWithTime.source,
         'created_at': mealWithTime.createdAt.toIso8601String(),
-      });
+      };
+      
+      // Add breakdown if available
+      if (breakdownJson != null) {
+        insertMap['breakdown'] = breakdownJson;
+      }
+      
+      final id = await db.insert('meals', insertMap);
+
+      debugPrint('Meal inserted with ID: $id');
 
       // Add to local list with database ID
       _meals.insert(0, mealWithTime.copyWith(id: id.toString()));
+      debugPrint('Meal added to local list. Total meals: ${_meals.length}');
       _calculateTotals();
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Error adding meal: $e');
+      debugPrint('Stack trace: $stackTrace');
     } finally {
       _isLoading = false;
       notifyListeners();
+      debugPrint('addMeal completed, notifying listeners');
     }
   }
 
@@ -527,7 +649,7 @@ class NutritionProvider extends ChangeNotifier {
   }
 
   // AI Image Analysis for Nutrition Detection via backend
-  Future<DetectedFoodItem?> analyzeImageForNutrition(String imagePath) async {
+  Future<DetectedFoodItemsResponse?> analyzeImageForNutrition(String imagePath) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -631,27 +753,78 @@ class NutritionProvider extends ChangeNotifier {
         throw Exception('BACKEND_ERROR: ${resp.statusCode}');
       }
 
+      debugPrint('Backend returned 200. Response body length: ${resp.body.length}');
+      debugPrint('Response body (first 500 chars): ${resp.body.length > 500 ? resp.body.substring(0, 500) : resp.body}');
+
       // Parse successful response
       Map<String, dynamic> jsonData;
       try {
         jsonData = json.decode(resp.body) as Map<String, dynamic>;
+        debugPrint('AI response parsed successfully. Keys: ${jsonData.keys.toList()}');
+        debugPrint('Full response data: $jsonData');
       } catch (e) {
         debugPrint('Failed to parse AI response JSON: $e');
+        debugPrint('Response body: ${resp.body}');
         throw Exception('AI_RESPONSE_PARSE_ERROR: The AI service returned an invalid response. Please try again.');
       }
-      final detectedFood = DetectedFoodItem(
-        name: jsonData['name'] ?? 'Unknown Food',
-        estimatedWeight: jsonData['estimated_weight'] ?? 100,
-        calories: jsonData['calories'] ?? 0,
-        protein: double.tryParse(jsonData['protein']?.toString() ?? '0') ?? 0.0,
-        fat: double.tryParse(jsonData['fat']?.toString() ?? '0') ?? 0.0,
-        carbs: double.tryParse(jsonData['carbs']?.toString() ?? '0') ?? 0.0,
-        confidence: jsonData['confidence'] ?? 0,
-      );
 
-      return detectedFood;
+      // Check if response has multiple items format (main_item + items)
+      if (jsonData.containsKey('main_item') && jsonData.containsKey('items')) {
+        debugPrint('Multiple items format detected');
+        // Multiple items format
+        final mainItemData = jsonData['main_item'] as Map<String, dynamic>;
+        final itemsData = jsonData['items'] as List<dynamic>?;
+
+        final mainItem = DetectedFoodItem(
+          name: mainItemData['name'] ?? 'Unknown Food',
+          estimatedWeight: mainItemData['estimated_weight'] ?? 100,
+          calories: mainItemData['calories'] ?? 0,
+          protein: double.tryParse(mainItemData['protein']?.toString() ?? '0') ?? 0.0,
+          fat: double.tryParse(mainItemData['fat']?.toString() ?? '0') ?? 0.0,
+          carbs: double.tryParse(mainItemData['carbs']?.toString() ?? '0') ?? 0.0,
+          fiber: mainItemData['fiber'] != null
+              ? double.tryParse(mainItemData['fiber'].toString())
+              : null,
+          confidence: mainItemData['confidence'] ?? 0,
+        );
+
+        List<DetectedFoodItemBreakdown>? items;
+        if (itemsData != null && itemsData.isNotEmpty) {
+          items = itemsData
+              .map((item) => DetectedFoodItemBreakdown.fromJson(item as Map<String, dynamic>))
+              .toList();
+        }
+
+        debugPrint('Returning multiple items response. Main item: ${mainItem.name}, Items count: ${items?.length ?? 0}');
+        return DetectedFoodItemsResponse(
+          mainItem: mainItem,
+          items: items,
+        );
+      } else {
+        // Single item format
+        debugPrint('Single item format detected');
+        final mainItem = DetectedFoodItem(
+          name: jsonData['name'] ?? 'Unknown Food',
+          estimatedWeight: jsonData['estimated_weight'] ?? 100,
+          calories: jsonData['calories'] ?? 0,
+          protein: double.tryParse(jsonData['protein']?.toString() ?? '0') ?? 0.0,
+          fat: double.tryParse(jsonData['fat']?.toString() ?? '0') ?? 0.0,
+          carbs: double.tryParse(jsonData['carbs']?.toString() ?? '0') ?? 0.0,
+          fiber: jsonData['fiber'] != null
+              ? double.tryParse(jsonData['fiber'].toString())
+              : null,
+          confidence: jsonData['confidence'] ?? 0,
+        );
+
+        debugPrint('Returning single item response. Item: ${mainItem.name}, Calories: ${mainItem.calories}');
+        return DetectedFoodItemsResponse(
+          mainItem: mainItem,
+          items: null, // Single item, no breakdown
+        );
+      }
     } catch (e) {
       debugPrint('Error analyzing image with AI: $e');
+      debugPrint('Error stack trace: ${StackTrace.current}');
 
       // Handle specific error types
       final errorString = e.toString();

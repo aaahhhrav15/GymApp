@@ -1,5 +1,6 @@
 // lib/components/add_food_drawer.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/nutrition_models.dart';
@@ -30,8 +31,10 @@ class AddFoodDrawer extends StatefulWidget {
     required double carbs,
     String mealType,
     String source,
+    List<DetectedFoodItemBreakdown>? breakdown,
   }) onAddFood;
   final bool isLoading;
+  final BuildContext? parentContext; // Parent context for showing dialogs
 
   const AddFoodDrawer({
     super.key,
@@ -39,6 +42,7 @@ class AddFoodDrawer extends StatefulWidget {
     required this.onClose,
     required this.onAddFood,
     this.isLoading = false,
+    this.parentContext,
   });
 
   @override
@@ -367,30 +371,50 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
                   child: Container(
                     padding: EdgeInsets.all(screenWidth * 0.04),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primaryContainer,
+                          Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(screenWidth * 0.04),
                       border: Border.all(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.3)),
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.edit,
+                        Container(
+                          padding: EdgeInsets.all(screenWidth * 0.025),
+                          decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.primary,
-                            size: screenWidth * 0.08),
-                        SizedBox(height: screenHeight * 0.01),
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                          ),
+                          child: Icon(
+                            Icons.edit_note,
+                            color: Colors.white,
+                            size: screenWidth * 0.08,
+                          ),
+                        ),
+                        SizedBox(height: screenHeight * 0.015),
                         Text(
                           'Enter Food Name',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: screenWidth * 0.035,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: screenWidth * 0.038,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         SizedBox(height: screenHeight * 0.005),
@@ -398,8 +422,8 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
                           'Get nutrition values',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: screenWidth * 0.03,
-                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: screenWidth * 0.032,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -414,30 +438,50 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
                   child: Container(
                     padding: EdgeInsets.all(screenWidth * 0.04),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .secondaryContainer
-                          .withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.secondaryContainer,
+                          Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.7),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(screenWidth * 0.04),
                       border: Border.all(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .secondary
-                              .withOpacity(0.3)),
+                        color: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.secondary.withOpacity(0.15),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.camera_alt,
+                        Container(
+                          padding: EdgeInsets.all(screenWidth * 0.025),
+                          decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.secondary,
-                            size: screenWidth * 0.08),
-                        SizedBox(height: screenHeight * 0.01),
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                          ),
+                          child: Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: screenWidth * 0.08,
+                          ),
+                        ),
+                        SizedBox(height: screenHeight * 0.015),
                         Text(
                           'Take Image',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: screenWidth * 0.035,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.secondary,
+                            fontSize: screenWidth * 0.038,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         SizedBox(height: screenHeight * 0.005),
@@ -445,8 +489,8 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
                           'AI will analyze',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: screenWidth * 0.03,
-                            color: Theme.of(context).colorScheme.secondary,
+                            fontSize: screenWidth * 0.032,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -458,34 +502,53 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
           ),
 
           if (_isAnalyzing) ...[
-            SizedBox(height: screenHeight * 0.025),
+            SizedBox(height: screenHeight * 0.03),
             Container(
               padding: EdgeInsets.all(screenWidth * 0.05),
               decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primaryContainer
-                    .withOpacity(0.3),
-                borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primaryContainer,
+                    Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
-                  const CircularProgressIndicator(),
-                  SizedBox(height: screenHeight * 0.015),
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
                   Text(
                     'Analyzing food...',
                     style: TextStyle(
-                      fontSize: screenWidth * 0.04,
-                      fontWeight: FontWeight.w600,
+                      fontSize: screenWidth * 0.042,
+                      fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  SizedBox(height: screenHeight * 0.005),
+                  SizedBox(height: screenHeight * 0.008),
                   Text(
                     'AI is getting nutrition information',
                     style: TextStyle(
-                      fontSize: screenWidth * 0.03,
-                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: screenWidth * 0.035,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -494,32 +557,6 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
           ],
 
           SizedBox(height: screenHeight * 0.03),
-
-          // Close button
-          // SizedBox(
-          //   width: double.infinity,
-          //   height: screenHeight * 0.06,
-          //   child: ElevatedButton(
-          //     onPressed: widget.onClose,
-          //     style: ElevatedButton.styleFrom(
-          //       backgroundColor: Theme.of(context).colorScheme.primary,
-          //       foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          //       elevation: 2,
-          //       shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-          //       shape: RoundedRectangleBorder(
-          //         borderRadius: BorderRadius.circular(screenWidth * 0.03),
-          //       ),
-          //     ),
-          //     child: Text(
-          //       'Close',
-          //       style: TextStyle(
-          //           fontSize: screenWidth * 0.04,
-          //           fontWeight: FontWeight.w600),
-          //     ),
-          //   ),
-          // ),
-
-          SizedBox(height: screenHeight * 0.025),
         ],
       ),
     );
@@ -542,6 +579,7 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
                     'Food Name',
                     _customFoodNameController,
                     'e.g., Grilled Chicken',
+                    icon: Icons.restaurant,
                   ),
                   SizedBox(height: screenHeight * 0.02),
 
@@ -551,6 +589,7 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
                     _customCaloriesController,
                     'e.g., 250',
                     keyboardType: TextInputType.number,
+                    icon: Icons.local_fire_department,
                   ),
                   SizedBox(height: screenHeight * 0.02),
 
@@ -563,6 +602,7 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
                           _customProteinController,
                           '0',
                           keyboardType: TextInputType.number,
+                          icon: Icons.fitness_center,
                         ),
                       ),
                       SizedBox(width: screenWidth * 0.03),
@@ -572,6 +612,7 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
                           _customFatController,
                           '0',
                           keyboardType: TextInputType.number,
+                          icon: Icons.water_drop,
                         ),
                       ),
                       SizedBox(width: screenWidth * 0.03),
@@ -581,6 +622,7 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
                           _customCarbsController,
                           '0',
                           keyboardType: TextInputType.number,
+                          icon: Icons.energy_savings_leaf,
                         ),
                       ),
                     ],
@@ -599,9 +641,10 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                elevation: 0,
+                elevation: 4,
+                shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.4),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.04),
                 ),
               ),
               child: widget.isLoading
@@ -613,11 +656,22 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
                         strokeWidth: 2,
                       ),
                     )
-                  : Text(
-                      'Add Food',
-                      style: TextStyle(
-                          fontSize: screenWidth * 0.04,
-                          fontWeight: FontWeight.w600),
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add_circle_outline,
+                          size: screenWidth * 0.05,
+                        ),
+                        SizedBox(width: screenWidth * 0.02),
+                        Text(
+                          'Add Food',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.042,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
             ),
           ),
@@ -633,56 +687,100 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
     TextEditingController controller,
     String hint, {
     TextInputType keyboardType = TextInputType.text,
+    IconData? icon,
   }) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
+    // Determine icon color based on label
+    Color iconColor = Theme.of(context).colorScheme.primary;
+    if (label.contains('Calories') || label.contains('kcal')) {
+      iconColor = Colors.orange;
+    } else if (label.contains('Protein')) {
+      iconColor = Colors.blue;
+    } else if (label.contains('Fat')) {
+      iconColor = Colors.purple;
+    } else if (label.contains('Carbs')) {
+      iconColor = Colors.green;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: screenWidth * 0.035,
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+        Row(
+          children: [
+            if (icon != null) ...[
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.015),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                ),
+                child: Icon(
+                  icon,
+                  color: iconColor,
+                  size: screenWidth * 0.04,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.02),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: screenWidth * 0.038,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: screenHeight * 0.008),
+        SizedBox(height: screenHeight * 0.012),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
+          style: TextStyle(
+            fontSize: screenWidth * 0.04,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
-                fontSize: screenWidth * 0.035),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+              fontSize: screenWidth * 0.038,
+            ),
+            prefixIcon: icon != null
+                ? Icon(
+                    icon,
+                    color: iconColor.withOpacity(0.6),
+                    size: screenWidth * 0.05,
+                  )
+                : null,
             filled: true,
-            fillColor: Theme.of(context).colorScheme.surfaceContainer,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(screenWidth * 0.02),
+              borderRadius: BorderRadius.circular(screenWidth * 0.03),
               borderSide: BorderSide(
                 color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
                 width: 1,
               ),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(screenWidth * 0.02),
+              borderRadius: BorderRadius.circular(screenWidth * 0.03),
               borderSide: BorderSide(
                 color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(screenWidth * 0.02),
+              borderRadius: BorderRadius.circular(screenWidth * 0.03),
               borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.primary,
+                color: iconColor,
                 width: 2,
               ),
             ),
             contentPadding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.03,
-              vertical: screenHeight * 0.015,
+              horizontal: screenWidth * 0.04,
+              vertical: screenHeight * 0.018,
             ),
           ),
         ),
@@ -696,59 +794,273 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (context) => Dialog(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(screenWidth * 0.04)),
-        title: Text('Enter Food Details',
-            style: TextStyle(fontSize: screenWidth * 0.045)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _foodNameController,
-              decoration: InputDecoration(
-                labelText: 'Food Name',
-                labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                hintText: 'e.g., Apple, Chicken Breast',
-                hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-                border: const OutlineInputBorder(),
-              ),
-              style: TextStyle(fontSize: screenWidth * 0.035),
-            ),
-            SizedBox(height: screenHeight * 0.02),
-            TextField(
-              controller: _weightController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Weight (grams)',
-                labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                hintText: 'e.g., 100',
-                hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-                border: const OutlineInputBorder(),
-              ),
-              style: TextStyle(fontSize: screenWidth * 0.035),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(screenWidth * 0.06),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-                Text('Cancel', style: TextStyle(fontSize: screenWidth * 0.035)),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: screenWidth * 0.9,
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _getAINutrition();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            ),
-            child: Text('Get Nutrition',
-                style: TextStyle(fontSize: screenWidth * 0.035)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.05),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(screenWidth * 0.06),
+                    topRight: Radius.circular(screenWidth * 0.06),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(screenWidth * 0.025),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                      ),
+                      child: Icon(
+                        Icons.edit_note,
+                        color: Colors.white,
+                        size: screenWidth * 0.06,
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.03),
+                    Expanded(
+                      child: Text(
+                        'Enter Food Details',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: screenWidth * 0.048,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: screenWidth * 0.05,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              Padding(
+                padding: EdgeInsets.all(screenWidth * 0.05),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Food Name Field
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      ),
+                      child: TextField(
+                        controller: _foodNameController,
+                        style: TextStyle(fontSize: screenWidth * 0.04),
+                        decoration: InputDecoration(
+                          labelText: 'Food Name',
+                          labelStyle: TextStyle(
+                            fontSize: screenWidth * 0.038,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          hintText: 'e.g., Apple, Chicken Breast',
+                          hintStyle: TextStyle(
+                            fontSize: screenWidth * 0.038,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                          ),
+                          prefixIcon: Icon(
+                            Icons.restaurant,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.04,
+                            vertical: screenHeight * 0.02,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.025),
+                    
+                    // Weight Field
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      ),
+                      child: TextField(
+                        controller: _weightController,
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(fontSize: screenWidth * 0.04),
+                        decoration: InputDecoration(
+                          labelText: 'Weight (grams)',
+                          labelStyle: TextStyle(
+                            fontSize: screenWidth * 0.038,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          hintText: 'e.g., 100',
+                          hintStyle: TextStyle(
+                            fontSize: screenWidth * 0.038,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                          ),
+                          prefixIcon: Icon(
+                            Icons.scale,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.04,
+                            vertical: screenHeight * 0.02,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Action Buttons
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.04),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(screenWidth * 0.06),
+                    bottomRight: Radius.circular(screenWidth * 0.06),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: screenWidth * 0.035),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outline,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.03),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _getAINutrition();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          padding: EdgeInsets.symmetric(vertical: screenWidth * 0.035),
+                          elevation: 4,
+                          shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.auto_awesome,
+                              size: screenWidth * 0.05,
+                            ),
+                            SizedBox(width: screenWidth * 0.02),
+                            Text(
+                              'Get Nutrition',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.042,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -781,33 +1093,31 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
         final totalFat = nutritionData.fat * weightMultiplier;
         final totalCarbs = nutritionData.carbs * weightMultiplier;
 
-        // Show success message with nutrition details
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   SnackBar(
-        //     content:
-        //         Text('Added: $foodName (${weight}g) - ${totalCalories} kcal'),
-        //     backgroundColor: Colors.green,
-        //     behavior: SnackBarBehavior.floating,
-        //     shape:
-        //         RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        //     margin: const EdgeInsets.all(16),
-        //   ),
-        // );
+        // Check if we can show results (either widget is mounted or we have parentContext)
+        final canShowResults = mounted || widget.parentContext != null;
+        if (!canShowResults) {
+          debugPrint('Widget disposed during analysis and no parent context, cannot show results');
+          return;
+        }
 
-        widget.onAddFood(
-          name: '$foodName (${weight}g)',
-          calories: totalCalories,
-          protein: totalProtein,
-          fat: totalFat,
-          carbs: totalCarbs,
-          mealType: _getMealTypeByTime(),
-          source: 'ai_nutrition',
-        );
-
-        // Clear the form and close drawer
-        _foodNameController.clear();
-        _weightController.text = '100';
-        widget.onClose();
+        // Show confirmation dialog with nutrition details
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final canShow = mounted || widget.parentContext != null;
+          if (!canShow) {
+            debugPrint('Cannot show nutrition confirmation - widget not mounted and no parent context');
+            return;
+          }
+          
+          _showNutritionConfirmationDialog(
+            foodName: foodName,
+            weight: weight,
+            calories: totalCalories,
+            protein: totalProtein,
+            fat: totalFat,
+            carbs: totalCarbs,
+            nutritionData: nutritionData,
+          );
+        });
       } else {
         // Handle non-edible item or other error
         // Snackbar removed - no longer showing error messages
@@ -826,15 +1136,24 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) => Container(
         margin: EdgeInsets.all(screenWidth * 0.04),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(screenWidth * 0.06),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Handle
             Container(
               margin: EdgeInsets.only(top: screenHeight * 0.015),
               width: screenWidth * 0.1,
@@ -844,54 +1163,226 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
                 borderRadius: BorderRadius.circular(screenWidth * 0.005),
               ),
             ),
-            SizedBox(height: screenHeight * 0.02),
-            Text(
-              'Scan Food',
-              style: TextStyle(
-                  fontSize: screenWidth * 0.045, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: screenHeight * 0.02),
-            ListTile(
-              leading: Container(
-                padding: EdgeInsets.all(screenWidth * 0.02),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                ),
-                child: Icon(Icons.camera_alt,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: screenWidth * 0.06),
+            
+            // Header
+            Padding(
+              padding: EdgeInsets.all(screenWidth * 0.05),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(screenWidth * 0.025),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                    ),
+                    child: Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: screenWidth * 0.06,
+                    ),
+                  ),
+                  SizedBox(width: screenWidth * 0.03),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Scan Food',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.048,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        SizedBox(height: screenWidth * 0.01),
+                        Text(
+                          'AI will analyze your food image',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.035,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              title: Text('Take Photo',
-                  style: TextStyle(fontSize: screenWidth * 0.04)),
-              subtitle: Text('Capture food with camera',
-                  style: TextStyle(fontSize: screenWidth * 0.035)),
-              onTap: () {
-                Navigator.pop(context);
-                _captureFromCamera();
-              },
             ),
-            ListTile(
-              leading: Container(
-                padding: EdgeInsets.all(screenWidth * 0.02),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                ),
-                child: Icon(Icons.photo_library,
-                    color: Theme.of(context).colorScheme.secondary,
-                    size: screenWidth * 0.06),
+
+            // Options
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+              child: Column(
+                children: [
+                  // Camera Option
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+                      _captureFromCamera();
+                    },
+                    borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                    child: Container(
+                      padding: EdgeInsets.all(screenWidth * 0.04),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Theme.of(context).colorScheme.primaryContainer,
+                            Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(screenWidth * 0.03),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                            ),
+                            child: Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: screenWidth * 0.06,
+                            ),
+                          ),
+                          SizedBox(width: screenWidth * 0.04),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Take Photo',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.042,
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
+                                SizedBox(height: screenWidth * 0.01),
+                                Text(
+                                  'Capture food with camera',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.035,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: screenWidth * 0.04,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: screenWidth * 0.04),
+                  
+                  // Gallery Option
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickFromGallery();
+                    },
+                    borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                    child: Container(
+                      padding: EdgeInsets.all(screenWidth * 0.04),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Theme.of(context).colorScheme.secondaryContainer,
+                            Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.7),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(screenWidth * 0.03),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.secondary,
+                              borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                            ),
+                            child: Icon(
+                              Icons.photo_library,
+                              color: Colors.white,
+                              size: screenWidth * 0.06,
+                            ),
+                          ),
+                          SizedBox(width: screenWidth * 0.04),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Choose from Gallery',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.042,
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
+                                SizedBox(height: screenWidth * 0.01),
+                                Text(
+                                  'Select from photo library',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.035,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            color: Theme.of(context).colorScheme.secondary,
+                            size: screenWidth * 0.04,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              title: Text('Choose from Gallery',
-                  style: TextStyle(fontSize: screenWidth * 0.04)),
-              subtitle: Text('Select from photo library',
-                  style: TextStyle(fontSize: screenWidth * 0.035)),
-              onTap: () {
-                Navigator.pop(context);
-                _pickFromGallery();
-              },
             ),
-            SizedBox(height: screenHeight * 0.02),
+            
+            SizedBox(height: screenHeight * 0.03),
           ],
         ),
       ),
@@ -929,22 +1420,48 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
   }
 
   Future<void> _analyzeImage(XFile image) async {
+    if (!mounted) return;
+    
     setState(() => _isAnalyzing = true);
 
     try {
       // Use the AI functionality from NutritionProvider
       final nutritionProvider = context.read<NutritionProvider>();
-      final detectedFood =
+      debugPrint('Starting image analysis for: ${image.path}');
+      final detectedFoodResponse =
           await nutritionProvider.analyzeImageForNutrition(image.path);
 
-      if (detectedFood != null) {
-        if (detectedFood.confidence < 60) {
-          // Show warning for low confidence results
-          _showLowConfidenceDialog(detectedFood);
-        } else {
-          _showAIResults([detectedFood]);
-        }
+      // Check if we can show results (either widget is mounted or we have parentContext)
+      final canShowResults = mounted || widget.parentContext != null;
+      if (!canShowResults) {
+        debugPrint('Widget disposed during analysis and no parent context, cannot show results');
+        return;
+      }
+
+      debugPrint('Image analysis completed. Response: ${detectedFoodResponse != null ? "not null" : "null"}');
+      if (detectedFoodResponse != null) {
+        debugPrint('Detected food: ${detectedFoodResponse.mainItem.name}, Confidence: ${detectedFoodResponse.mainItem.confidence}');
+        
+        // Use post-frame callback to ensure context is valid when showing dialog
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          // Check again if we can show results (either widget is mounted or we have parentContext)
+          final canShow = mounted || widget.parentContext != null;
+          if (!canShow) {
+            debugPrint('Cannot show results - widget not mounted and no parent context');
+            return;
+          }
+          
+          if (detectedFoodResponse.mainItem.confidence < 60) {
+            // Show warning for low confidence results
+            debugPrint('Low confidence detected, showing warning dialog');
+            _showLowConfidenceDialog(detectedFoodResponse);
+          } else {
+            debugPrint('Showing AI results dialog');
+            _showAIResults(detectedFoodResponse);
+          }
+        });
       } else {
+        debugPrint('No food detected in image');
         // Snackbar removed - no longer showing error messages
       }
     } catch (e) {
@@ -1003,146 +1520,559 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
         errorMessage = 'Unable to analyze the image. Please check your internet connection or try again.';
       }
       
+      debugPrint('Error during image analysis: $errorMessage');
       // Snackbar removed - no longer showing error messages
     } finally {
-      setState(() => _isAnalyzing = false);
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+        });
+        debugPrint('Loading state cleared');
+      }
     }
   }
 
-  void _showAIResults(List<DetectedFoodItem> foodItems) {
-    // Calculate totals
-    int totalCalories = foodItems.fold(0, (sum, item) => sum + item.calories);
-    double totalProtein =
-        foodItems.fold(0.0, (sum, item) => sum + item.protein);
-    double totalFat = foodItems.fold(0.0, (sum, item) => sum + item.fat);
-    double totalCarbs = foodItems.fold(0.0, (sum, item) => sum + item.carbs);
+  void _showAIResults(DetectedFoodItemsResponse response) {
+    // Use parent context if available, otherwise use widget context
+    final dialogContext = widget.parentContext ?? context;
+    
+    // If widget is not mounted, we must have parentContext to show dialog
+    if (!mounted && widget.parentContext == null) {
+      debugPrint('Cannot show AI results - widget not mounted and no parent context');
+      return;
+    }
+    
+    // Ensure the context is still valid
+    try {
+      MediaQuery.of(dialogContext);
+    } catch (e) {
+      debugPrint('Cannot show AI results - context is invalid: $e');
+      return;
+    }
+    
+    final mainItem = response.mainItem;
+    final screenWidth = MediaQuery.of(dialogContext).size.width;
+    final screenHeight = MediaQuery.of(dialogContext).size.height;
 
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.auto_awesome,
-                color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 8),
-            const Text('AI Analysis Results'),
-          ],
+      context: dialogContext,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(screenWidth * 0.06),
         ),
-        content: Container(
-          width: double.maxFinite,
-          constraints: const BoxConstraints(maxHeight: 400),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: screenHeight * 0.75,
+            maxWidth: screenWidth * 0.9,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Detected Food Items:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: foodItems.length,
-                  separatorBuilder: (context, index) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final item = foodItems[index];
-                    return _buildDetectedFoodItem(item);
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
+              // Header with gradient
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(screenWidth * 0.05),
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(screenWidth * 0.06),
+                    topRight: Radius.circular(screenWidth * 0.06),
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    const Text(
-                      'Total Estimated:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    Container(
+                      padding: EdgeInsets.all(screenWidth * 0.025),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                      ),
+                      child: Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: screenWidth * 0.06,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text('Calories: $totalCalories kcal'),
-                    Text('Protein: ${totalProtein.round()}g'),
-                    Text('Fat: ${totalFat.round()}g'),
-                    Text('Carbs: ${totalCarbs.round()}g'),
+                    SizedBox(width: screenWidth * 0.03),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'AI Analysis Results',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: screenWidth * 0.048,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: screenWidth * 0.01),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.025,
+                              vertical: screenWidth * 0.01,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                            ),
+                            child: Text(
+                              '${mainItem.confidence}% Confidence',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: screenWidth * 0.032,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: screenWidth * 0.05,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(screenWidth * 0.05),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Main Item Card
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(screenWidth * 0.04),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.2),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(screenWidth * 0.02),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                                  ),
+                                  child: Icon(
+                                    Icons.restaurant,
+                                    color: Colors.white,
+                                    size: screenWidth * 0.05,
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.03),
+                                Expanded(
+                                  child: Text(
+                                    mainItem.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: screenWidth * 0.045,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: screenWidth * 0.04),
+                            Container(
+                              padding: EdgeInsets.all(screenWidth * 0.03),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildNutritionBadge(
+                                      'Weight',
+                                      '${mainItem.estimatedWeight}g',
+                                      Icons.scale,
+                                      Theme.of(context).colorScheme.secondary,
+                                      screenWidth,
+                                      context,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: screenWidth * 0.03),
+                            // Nutrition Grid
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildNutritionBadge(
+                                    'Calories',
+                                    '${mainItem.calories}',
+                                    Icons.local_fire_department,
+                                    Colors.orange,
+                                    screenWidth,
+                                    context,
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.02),
+                                Expanded(
+                                  child: _buildNutritionBadge(
+                                    'Protein',
+                                    '${mainItem.protein.toStringAsFixed(1)}g',
+                                    Icons.fitness_center,
+                                    Colors.blue,
+                                    screenWidth,
+                                    context,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: screenWidth * 0.02),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildNutritionBadge(
+                                    'Fat',
+                                    '${mainItem.fat.toStringAsFixed(1)}g',
+                                    Icons.water_drop,
+                                    Colors.purple,
+                                    screenWidth,
+                                    context,
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.02),
+                                Expanded(
+                                  child: _buildNutritionBadge(
+                                    'Carbs',
+                                    '${mainItem.carbs.toStringAsFixed(1)}g',
+                                    Icons.energy_savings_leaf,
+                                    Colors.green,
+                                    screenWidth,
+                                    context,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Individual Items Breakdown (if multiple items)
+                      if (response.hasMultipleItems) ...[
+                        SizedBox(height: screenWidth * 0.05),
+                        Row(
+                          children: [
+                            Container(
+                              width: 4,
+                              height: screenWidth * 0.05,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            SizedBox(width: screenWidth * 0.03),
+                            Text(
+                              'Item Breakdown',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: screenWidth * 0.042,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: screenWidth * 0.03),
+                        ...(response.items!.map((item) => _buildDetectedFoodItemBreakdown(item, screenWidth, dialogContext))),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              // Action Buttons
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.04),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(screenWidth * 0.06),
+                    bottomRight: Radius.circular(screenWidth * 0.06),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: screenWidth * 0.035),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outline,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.03),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                          _addDetectedFoods(response);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(dialogContext).colorScheme.primary,
+                          foregroundColor: Theme.of(dialogContext).colorScheme.onPrimary,
+                          padding: EdgeInsets.symmetric(vertical: screenWidth * 0.035),
+                          elevation: 4,
+                          shadowColor: Theme.of(dialogContext).colorScheme.primary.withOpacity(0.4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_circle_outline,
+                              size: screenWidth * 0.05,
+                            ),
+                            SizedBox(width: screenWidth * 0.02),
+                            Text(
+                              'Add to Meals',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.042,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _addDetectedFoods(foodItems);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      ),
+    );
+  }
+
+  Widget _buildNutritionBadge(String label, String value, IconData icon, Color color, double screenWidth, BuildContext badgeContext) {
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.025),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(screenWidth * 0.025),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: screenWidth * 0.045),
+          SizedBox(height: screenWidth * 0.01),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: screenWidth * 0.038,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
-            child: const Text('Add to Meals'),
+          ),
+          SizedBox(height: screenWidth * 0.005),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: screenWidth * 0.028,
+              color: Theme.of(badgeContext).colorScheme.onSurface.withOpacity(0.6),
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDetectedFoodItem(DetectedFoodItem item) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                item.name,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: _getConfidenceColor(item.confidence).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                '${item.confidence}%',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: _getConfidenceColor(item.confidence),
+  Widget _buildDetectedFoodItemBreakdown(DetectedFoodItemBreakdown item, double screenWidth, BuildContext dialogContext) {
+    return Container(
+      margin: EdgeInsets.only(bottom: screenWidth * 0.03),
+      padding: EdgeInsets.all(screenWidth * 0.04),
+      decoration: BoxDecoration(
+        color: Theme.of(dialogContext).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+        border: Border.all(
+          color: Theme.of(dialogContext).colorScheme.outline.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(dialogContext).colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.02),
+                decoration: BoxDecoration(
+                  color: Theme.of(dialogContext).colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                ),
+                child: Icon(
+                  Icons.fastfood,
+                  color: Theme.of(dialogContext).colorScheme.onSecondaryContainer,
+                  size: screenWidth * 0.04,
                 ),
               ),
+              SizedBox(width: screenWidth * 0.03),
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: screenWidth * 0.04,
+                    color: Theme.of(dialogContext).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              if (item.quantityDescription.isNotEmpty)
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth * 0.025,
+                    vertical: screenWidth * 0.015,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Theme.of(dialogContext).colorScheme.secondaryContainer,
+                        Theme.of(dialogContext).colorScheme.secondaryContainer.withOpacity(0.7),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                  ),
+                  child: Text(
+                    item.quantityDescription,
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.032,
+                      color: Theme.of(dialogContext).colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: screenWidth * 0.03),
+          Container(
+            padding: EdgeInsets.all(screenWidth * 0.025),
+            decoration: BoxDecoration(
+              color: Theme.of(dialogContext).colorScheme.surface,
+              borderRadius: BorderRadius.circular(screenWidth * 0.02),
             ),
-          ],
-        ),
-        const SizedBox(height: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildMiniBadge(
+                  '${item.estimatedWeight}g',
+                  Icons.scale,
+                  Theme.of(dialogContext).colorScheme.secondary,
+                  screenWidth,
+                ),
+                _buildMiniBadge(
+                  '${item.calories}',
+                  Icons.local_fire_department,
+                  Colors.orange,
+                  screenWidth,
+                ),
+                _buildMiniBadge(
+                  '${item.protein.toStringAsFixed(1)}g',
+                  Icons.fitness_center,
+                  Colors.blue,
+                  screenWidth,
+                ),
+                _buildMiniBadge(
+                  '${item.fat.toStringAsFixed(1)}g',
+                  Icons.water_drop,
+                  Colors.purple,
+                  screenWidth,
+                ),
+                _buildMiniBadge(
+                  '${item.carbs.toStringAsFixed(1)}g',
+                  Icons.energy_savings_leaf,
+                  Colors.green,
+                  screenWidth,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniBadge(String value, IconData icon, Color color, double screenWidth) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: screenWidth * 0.035),
+        SizedBox(height: screenWidth * 0.008),
         Text(
-          'Est. ${item.estimatedWeight}g',
+          value,
           style: TextStyle(
-              fontSize: 11,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          '${item.calories} kcal • P: ${item.protein.round()}g • F: ${item.fat.round()}g • C: ${item.carbs.round()}g',
-          style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+            fontSize: screenWidth * 0.028,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
         ),
       ],
     );
@@ -1155,28 +2085,402 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
     return Colors.red;
   }
 
-  Future<void> _addDetectedFoods(List<DetectedFoodItem> foodItems) async {
-    // For simplicity, we'll combine all detected items into one meal
-    // In a real app, you might want to let users add them individually
+  Future<void> _addDetectedFoods(DetectedFoodItemsResponse response) async {
+    // Use the main item for adding to meals (it contains the combined totals)
+    final mainItem = response.mainItem;
+    
+    debugPrint('Adding detected food to meals: ${mainItem.name}');
+    debugPrint('Nutrition: ${mainItem.calories} cal, P: ${mainItem.protein}g, F: ${mainItem.fat}g, C: ${mainItem.carbs}g');
+    debugPrint('Breakdown items: ${response.items?.length ?? 0}');
 
-    int totalCalories = foodItems.fold(0, (sum, item) => sum + item.calories);
-    double totalProtein =
-        foodItems.fold(0.0, (sum, item) => sum + item.protein);
-    double totalFat = foodItems.fold(0.0, (sum, item) => sum + item.fat);
-    double totalCarbs = foodItems.fold(0.0, (sum, item) => sum + item.carbs);
+    // Use post-frame callback to ensure widget is still valid
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        debugPrint('Executing onAddFood callback for image scan');
+        widget.onAddFood(
+          name: mainItem.name,
+          calories: mainItem.calories,
+          protein: mainItem.protein,
+          fat: mainItem.fat,
+          carbs: mainItem.carbs,
+          mealType: _getMealTypeByTime(),
+          source: 'image',
+          breakdown: response.items, // Pass breakdown items if available
+        );
+        debugPrint('Food added successfully from image scan');
+      } catch (e) {
+        debugPrint('Error adding food from image scan: $e');
+        debugPrint('Error stack trace: ${StackTrace.current}');
+      }
+    });
+  }
 
-    String combinedName = foodItems.length == 1
-        ? foodItems.first.name
-        : 'AI Detected Meal (${foodItems.length} items)';
+  void _showNutritionConfirmationDialog({
+    required String foodName,
+    required int weight,
+    required int calories,
+    required double protein,
+    required double fat,
+    required double carbs,
+    required NutritionData nutritionData,
+  }) {
+    // Use parent context if available, otherwise use widget context
+    final dialogContext = widget.parentContext ?? context;
+    
+    // If widget is not mounted, we must have parentContext to show dialog
+    if (!mounted && widget.parentContext == null) {
+      debugPrint('Cannot show nutrition confirmation - widget not mounted and no parent context');
+      return;
+    }
+    
+    // Ensure the context is still valid
+    try {
+      MediaQuery.of(dialogContext);
+    } catch (e) {
+      debugPrint('Cannot show nutrition confirmation - context is invalid: $e');
+      return;
+    }
+    
+    final screenWidth = MediaQuery.of(dialogContext).size.width;
+    final screenHeight = MediaQuery.of(dialogContext).size.height;
 
-    widget.onAddFood(
-      name: combinedName,
-      calories: totalCalories,
-      protein: totalProtein,
-      fat: totalFat,
-      carbs: totalCarbs,
-      mealType: _getMealTypeByTime(),
-      source: 'image',
+    showDialog(
+      context: dialogContext,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(screenWidth * 0.06),
+        ),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: screenHeight * 0.7,
+            maxWidth: screenWidth * 0.9,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.05),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(screenWidth * 0.06),
+                    topRight: Radius.circular(screenWidth * 0.06),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(screenWidth * 0.025),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                      ),
+                      child: Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: screenWidth * 0.06,
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.03),
+                    Expanded(
+                      child: Text(
+                        'Nutrition Details',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: screenWidth * 0.048,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: screenWidth * 0.05,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(screenWidth * 0.05),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Food Name Card
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(screenWidth * 0.04),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.2),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(screenWidth * 0.02),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                                  ),
+                                  child: Icon(
+                                    Icons.restaurant,
+                                    color: Colors.white,
+                                    size: screenWidth * 0.05,
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.03),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        foodName,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: screenWidth * 0.045,
+                                          color: Theme.of(context).colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      SizedBox(height: screenWidth * 0.01),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: screenWidth * 0.025,
+                                          vertical: screenWidth * 0.01,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).colorScheme.secondaryContainer,
+                                          borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                                        ),
+                                        child: Text(
+                                          'Weight: ${weight}g',
+                                          style: TextStyle(
+                                            fontSize: screenWidth * 0.032,
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: screenWidth * 0.04),
+                            // Nutrition Grid
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildNutritionBadge(
+                                    'Calories',
+                                    '$calories',
+                                    Icons.local_fire_department,
+                                    Colors.orange,
+                                    screenWidth,
+                                    context,
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.02),
+                                Expanded(
+                                  child: _buildNutritionBadge(
+                                    'Protein',
+                                    '${protein.toStringAsFixed(1)}g',
+                                    Icons.fitness_center,
+                                    Colors.blue,
+                                    screenWidth,
+                                    context,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: screenWidth * 0.02),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildNutritionBadge(
+                                    'Fat',
+                                    '${fat.toStringAsFixed(1)}g',
+                                    Icons.water_drop,
+                                    Colors.purple,
+                                    screenWidth,
+                                    context,
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.02),
+                                Expanded(
+                                  child: _buildNutritionBadge(
+                                    'Carbs',
+                                    '${carbs.toStringAsFixed(1)}g',
+                                    Icons.energy_savings_leaf,
+                                    Colors.green,
+                                    screenWidth,
+                                    context,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (nutritionData.fiber != null) ...[
+                              SizedBox(height: screenWidth * 0.02),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildNutritionBadge(
+                                      'Fiber',
+                                      '${(nutritionData.fiber! * (weight / 100.0)).toStringAsFixed(1)}g',
+                                      Icons.eco,
+                                      Colors.teal,
+                                      screenWidth,
+                                      context,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Action Buttons
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.04),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(screenWidth * 0.06),
+                    bottomRight: Radius.circular(screenWidth * 0.06),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: screenWidth * 0.035),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outline,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.03),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                          // Use post-frame callback to ensure widget is still valid
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            debugPrint('Adding food from text input: $foodName (${weight}g)');
+                            try {
+                              widget.onAddFood(
+                                name: '$foodName (${weight}g)',
+                                calories: calories,
+                                protein: protein,
+                                fat: fat,
+                                carbs: carbs,
+                                mealType: _getMealTypeByTime(),
+                                source: 'ai_nutrition',
+                                breakdown: null, // Text input doesn't have breakdown
+                              );
+                              debugPrint('Food callback executed successfully');
+                            } catch (e) {
+                              debugPrint('Error in onAddFood callback: $e');
+                            }
+                            // Clear the form and close drawer
+                            if (mounted) {
+                              _foodNameController.clear();
+                              _weightController.text = '100';
+                              widget.onClose();
+                            }
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(dialogContext).colorScheme.primary,
+                          foregroundColor: Theme.of(dialogContext).colorScheme.onPrimary,
+                          padding: EdgeInsets.symmetric(vertical: screenWidth * 0.035),
+                          elevation: 4,
+                          shadowColor: Theme.of(dialogContext).colorScheme.primary.withOpacity(0.4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_circle_outline,
+                              size: screenWidth * 0.05,
+                            ),
+                            SizedBox(width: screenWidth * 0.02),
+                            Text(
+                              'Add to Meals',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.042,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1221,10 +2525,29 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
     // Snackbars removed - no longer showing error messages
   }
 
-  void _showLowConfidenceDialog(DetectedFoodItem detectedFood) {
+  void _showLowConfidenceDialog(DetectedFoodItemsResponse response) {
+    // Use parent context if available, otherwise use widget context
+    final dialogContext = widget.parentContext ?? context;
+    
+    // If widget is not mounted, we must have parentContext to show dialog
+    if (!mounted && widget.parentContext == null) {
+      debugPrint('Cannot show low confidence dialog - widget not mounted and no parent context');
+      return;
+    }
+    
+    // Ensure the context is still valid
+    try {
+      MediaQuery.of(dialogContext);
+    } catch (e) {
+      debugPrint('Cannot show low confidence dialog - context is invalid: $e');
+      return;
+    }
+    
+    final mainItem = response.mainItem;
+    
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: dialogContext,
+      builder: (builderContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -1238,35 +2561,35 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'The AI provided a nutrition estimate with ${detectedFood.confidence}% confidence for:',
+              'The AI provided a nutrition estimate with ${mainItem.confidence}% confidence for:',
               style: const TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainer,
+                color: Theme.of(builderContext).colorScheme.surfaceContainer,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                     color:
-                        Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+                        Theme.of(builderContext).colorScheme.outline.withOpacity(0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    detectedFood.name,
+                    mainItem.name,
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text('Estimated Weight: ${detectedFood.estimatedWeight}g'),
-                  Text('Calories: ${detectedFood.calories} kcal'),
-                  Text('Protein: ${detectedFood.protein.round()}g'),
-                  Text('Fat: ${detectedFood.fat.round()}g'),
-                  Text('Carbs: ${detectedFood.carbs.round()}g'),
+                  Text('Estimated Weight: ${mainItem.estimatedWeight}g'),
+                  Text('Calories: ${mainItem.calories} kcal'),
+                  Text('Protein: ${mainItem.protein.toStringAsFixed(1)}g'),
+                  Text('Fat: ${mainItem.fat.toStringAsFixed(1)}g'),
+                  Text('Carbs: ${mainItem.carbs.toStringAsFixed(1)}g'),
                 ],
               ),
             ),
@@ -1283,17 +2606,17 @@ class _AddFoodDrawerState extends State<AddFoodDrawer> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              _addDetectedFoods([detectedFood]);
+              Navigator.of(dialogContext).pop();
+              _addDetectedFoods(response);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.secondary,
-              foregroundColor: Theme.of(context).colorScheme.onSecondary,
+              backgroundColor: Theme.of(dialogContext).colorScheme.secondary,
+              foregroundColor: Theme.of(dialogContext).colorScheme.onSecondary,
             ),
             child: const Text('Add Anyway'),
           ),

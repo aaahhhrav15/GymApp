@@ -19,6 +19,7 @@ import 'package:gym_app_2/widgets/recipes_widget.dart';
 import 'package:gym_app_2/services/gym_service.dart';
 import 'package:gym_app_2/providers/water_provider.dart';
 import 'package:gym_app_2/providers/bmi_provider.dart';
+import 'package:gym_app_2/providers/nutrition_provider.dart';
 import 'package:gym_app_2/widgets/recipes_widget.dart';
 import 'package:gym_app_2/providers/profile_provider.dart';
 import 'package:gym_app_2/providers/notifications_provider.dart';
@@ -61,7 +62,32 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeProviders();
       _scrollToCurrentDay();
+      // Reset nutrition provider to today when home screen initializes
+      _resetNutritionToToday();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reset nutrition to today when returning to home screen
+    // Use a small delay to ensure route is fully active
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        final route = ModalRoute.of(context);
+        if (route?.isCurrent == true) {
+          _resetNutritionToToday();
+        }
+      }
+    });
+  }
+
+  void _resetNutritionToToday() {
+    final nutritionProvider = context.read<NutritionProvider>();
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    if (nutritionProvider.selectedDate != today) {
+      nutritionProvider.resetToToday();
+    }
   }
 
   Future<void> _initializeProviders() async {
@@ -397,6 +423,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeContent(AppLocalizations l10n) {
+    // Reset nutrition to today when home content is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _resetNutritionToToday();
+      }
+    });
+    
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 

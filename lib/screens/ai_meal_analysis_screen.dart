@@ -14,7 +14,7 @@ class AIMealAnalysisScreen extends StatefulWidget {
 
 class _AIMealAnalysisScreenState extends State<AIMealAnalysisScreen> {
   File? _selectedImage;
-  DetectedFoodItem? _detectedFood;
+  DetectedFoodItemsResponse? _detectedFood;
   bool _isAnalyzing = false;
   String _selectedMealType = 'breakfast';
   final ImagePicker _picker = ImagePicker();
@@ -357,12 +357,12 @@ class _AIMealAnalysisScreenState extends State<AIMealAnalysisScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: _getConfidenceColor(
-                                  _detectedFood!.confidence),
+                                  _detectedFood!.mainItem.confidence),
                               borderRadius:
                                   BorderRadius.circular(screenWidth * 0.04),
                             ),
                             child: Text(
-                              '${_detectedFood!.confidence}% confident',
+                              '${_detectedFood!.mainItem.confidence}% confident',
                               style: TextStyle(
                                 fontSize: screenWidth * 0.03,
                                 color: Colors.white,
@@ -374,9 +374,19 @@ class _AIMealAnalysisScreenState extends State<AIMealAnalysisScreen> {
                       ),
                       SizedBox(height: screenWidth * 0.04),
 
+                      // Main Item Section
+                      Text(
+                        'Main Item',
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.038,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      SizedBox(height: screenWidth * 0.02),
                       // Meal Name
                       Text(
-                        _detectedFood!.name,
+                        _detectedFood!.mainItem.name,
                         style: TextStyle(
                           fontSize: screenWidth * 0.05,
                           fontWeight: FontWeight.bold,
@@ -385,7 +395,7 @@ class _AIMealAnalysisScreenState extends State<AIMealAnalysisScreen> {
                       ),
                       SizedBox(height: screenWidth * 0.02),
                       Text(
-                        'Estimated Weight: ${_detectedFood!.estimatedWeight}g',
+                        'Estimated Weight: ${_detectedFood!.mainItem.estimatedWeight}g',
                         style: TextStyle(
                           fontSize: screenWidth * 0.035,
                           color: Colors.grey[600],
@@ -400,7 +410,7 @@ class _AIMealAnalysisScreenState extends State<AIMealAnalysisScreen> {
                           Expanded(
                               child: _buildNutritionCard(
                                   'Calories',
-                                  '${_detectedFood!.calories}',
+                                  '${_detectedFood!.mainItem.calories}',
                                   'kcal',
                                   Colors.red,
                                   screenWidth)),
@@ -408,7 +418,7 @@ class _AIMealAnalysisScreenState extends State<AIMealAnalysisScreen> {
                           Expanded(
                               child: _buildNutritionCard(
                                   'Protein',
-                                  '${_detectedFood!.protein.toStringAsFixed(1)}',
+                                  '${_detectedFood!.mainItem.protein.toStringAsFixed(1)}',
                                   'g',
                                   Colors.blue,
                                   screenWidth)),
@@ -420,7 +430,7 @@ class _AIMealAnalysisScreenState extends State<AIMealAnalysisScreen> {
                           Expanded(
                               child: _buildNutritionCard(
                                   'Fat',
-                                  '${_detectedFood!.fat.toStringAsFixed(1)}',
+                                  '${_detectedFood!.mainItem.fat.toStringAsFixed(1)}',
                                   'g',
                                   Colors.orange,
                                   screenWidth)),
@@ -428,12 +438,29 @@ class _AIMealAnalysisScreenState extends State<AIMealAnalysisScreen> {
                           Expanded(
                               child: _buildNutritionCard(
                                   'Carbs',
-                                  '${_detectedFood!.carbs.toStringAsFixed(1)}',
+                                  '${_detectedFood!.mainItem.carbs.toStringAsFixed(1)}',
                                   'g',
                                   Colors.green,
                                   screenWidth)),
                         ],
                       ),
+
+                      // Individual Items Breakdown (if multiple items)
+                      if (_detectedFood!.hasMultipleItems) ...[
+                        SizedBox(height: screenWidth * 0.06),
+                        Divider(),
+                        SizedBox(height: screenWidth * 0.04),
+                        Text(
+                          'Item Breakdown',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.042,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        SizedBox(height: screenWidth * 0.03),
+                        ...(_detectedFood!.items!.map((item) => _buildItemBreakdownCard(item, screenWidth))),
+                      ],
 
                       SizedBox(height: screenWidth * 0.06),
 
@@ -629,7 +656,7 @@ class _AIMealAnalysisScreenState extends State<AIMealAnalysisScreen> {
       final nutritionProvider =
           Provider.of<NutritionProvider>(context, listen: false);
       final success = await nutritionProvider.addAIDetectedMeal(
-          _detectedFood!, _selectedMealType);
+          _detectedFood!.mainItem, _selectedMealType);
 
       if (success) {
         _showSuccessDialog();
@@ -639,6 +666,109 @@ class _AIMealAnalysisScreenState extends State<AIMealAnalysisScreen> {
     } catch (e) {
       _showErrorDialog('Error adding meal: $e');
     }
+  }
+
+  Widget _buildItemBreakdownCard(DetectedFoodItemBreakdown item, double screenWidth) {
+    return Container(
+      margin: EdgeInsets.only(bottom: screenWidth * 0.03),
+      padding: EdgeInsets.all(screenWidth * 0.03),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(screenWidth * 0.025),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.04,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ),
+              if (item.quantityDescription.isNotEmpty)
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth * 0.025,
+                    vertical: screenWidth * 0.01,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                  ),
+                  child: Text(
+                    item.quantityDescription,
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.03,
+                      color: Colors.blue[700],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: screenWidth * 0.02),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${item.calories} kcal',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.035,
+                    color: Colors.red[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'P: ${item.protein.toStringAsFixed(1)}g',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.035,
+                    color: Colors.blue[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'F: ${item.fat.toStringAsFixed(1)}g',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.035,
+                    color: Colors.orange[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'C: ${item.carbs.toStringAsFixed(1)}g',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.035,
+                    color: Colors.green[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: screenWidth * 0.01),
+          Text(
+            'Weight: ${item.estimatedWeight}g',
+            style: TextStyle(
+              fontSize: screenWidth * 0.03,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildNutritionCard(String label, String value, String unit,
