@@ -14,6 +14,7 @@ import HealthKit
   private var pedometer: CMPedometer?
   private var stepUpdateTimer: Timer?
   private var lastStepCount: Int = 0
+  private var backgroundTaskIdentifier: UIBackgroundTaskIdentifier = .invalid
   
   // HealthKit
   private var healthStore: HKHealthStore?
@@ -29,6 +30,9 @@ import HealthKit
     
     // Request notification permissions
     requestNotificationPermission()
+    
+    // Set notification center delegate to show notifications even when app is in foreground
+    UNUserNotificationCenter.current().delegate = self
     
     // Set up method channels as soon as possible
     DispatchQueue.main.async { [weak self] in
@@ -136,6 +140,11 @@ import HealthKit
         result(true)
       case "stopStepCounterService":
         self.stopBackgroundStepTracking()
+        result(true)
+      case "checkNotificationPermission":
+        self.checkNotificationPermission(result: result)
+      case "requestNotificationPermission":
+        self.requestNotificationPermission()
         result(true)
       default:
         result(FlutterMethodNotImplemented)
@@ -423,14 +432,15 @@ import HealthKit
       // Save steps from HealthKit (this is the authoritative source)
       sharedPrefs.set(steps, forKey: "flutter.daily_steps")
       sharedPrefs.set(todayString, forKey: "flutter.steps_date")
+      // CRITICAL: Save timestamp for recovery detection (iOS optimization)
+      sharedPrefs.set(Date().iso8601String, forKey: "flutter.last_periodic_save")
       sharedPrefs.synchronize()
       
       print("🏥 HealthKit step count updated: \(steps) steps")
       
-      // Update notification
-      if steps % 100 == 0 || self.shouldUpdateNotification() {
-        self.updateStepNotification(steps: steps)
-      }
+      // Update notification more frequently (every 10 steps or every 30 seconds)
+      // This matches Android behavior for better visibility
+      self.updateStepNotification(steps: steps)
     }
     
     healthStore.execute(query)
@@ -492,14 +502,83 @@ import HealthKit
 
   // MARK: - Step Tracking
 
+  private func checkNotificationPermission(result: @escaping FlutterResult) {
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      let isAuthorized = settings.authorizationStatus == .authorized && settings.alertSetting == .enabled
+      result(isAuthorized)
+    }
+  }
+  
   private func requestNotificationPermission() {
-    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-      if granted {
-        print("✅ Notification permission granted")
+    // First check current status
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      print("📱 Current notification authorization status: \(settings.authorizationStatus.rawValue)")
+      print("📱 Alert setting: \(settings.alertSetting.rawValue)")
+      print("📱 Badge setting: \(settings.badgeSetting.rawValue)")
+      print("📱 Sound setting: \(settings.soundSetting.rawValue)")
+      
+      // Only request if not determined
+      if settings.authorizationStatus == .notDetermined {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+          if granted {
+            print("✅ Notification permission granted")
+            // Register notification category for step counter
+            self.registerNotificationCategory()
+            
+            // Show a test notification to verify it works
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+              self.showTestNotification()
+            }
+          } else {
+            print("❌ Notification permission denied: \(error?.localizedDescription ?? "unknown")")
+            if let error = error {
+              print("❌ Error details: \(error)")
+            }
+          }
+        }
+      } else if settings.authorizationStatus == .authorized {
+        print("✅ Notification permission already granted")
+        self.registerNotificationCategory()
       } else {
-        print("❌ Notification permission denied: \(error?.localizedDescription ?? "unknown")")
+        print("⚠️ Notification permission status: \(settings.authorizationStatus.rawValue)")
+        print("⚠️ User needs to enable notifications in Settings")
       }
     }
+  }
+  
+  private func showTestNotification() {
+    let content = UNMutableNotificationContent()
+    content.title = "Step Counter"
+    content.body = "Notification test - Step counter is active"
+    content.sound = nil
+    
+    let request = UNNotificationRequest(
+      identifier: "test_notification",
+      content: content,
+      trigger: nil
+    )
+    
+    UNUserNotificationCenter.current().add(request) { error in
+      if let error = error {
+        print("❌ Test notification error: \(error)")
+      } else {
+        print("✅ Test notification sent successfully")
+      }
+    }
+  }
+  
+  private func registerNotificationCategory() {
+    // Create a notification category for step counter
+    // This helps iOS treat it as a persistent notification
+    let category = UNNotificationCategory(
+      identifier: "STEP_COUNTER",
+      actions: [],
+      intentIdentifiers: [],
+      options: [.customDismissAction]
+    )
+    
+    UNUserNotificationCenter.current().setNotificationCategories([category])
+    print("✅ Registered step counter notification category")
   }
 
   private func startBackgroundStepTracking() {
@@ -508,8 +587,9 @@ import HealthKit
       print("🏥 Using HealthKit for step tracking")
       getStepsFromHealthKit()
       
-      // Set up periodic updates from HealthKit
-      stepUpdateTimer = Timer.scheduledTimer(withTimeInterval: 120.0, repeats: true) { [weak self] _ in
+      // CRITICAL: Set up periodic updates from HealthKit more frequently (every 30 seconds)
+      // This ensures data is saved more often to prevent loss when app is killed (iOS optimization)
+      stepUpdateTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
         self?.getStepsFromHealthKit()
       }
       
@@ -556,18 +636,20 @@ import HealthKit
       // Save steps
       sharedPrefs.set(steps, forKey: "flutter.daily_steps")
       sharedPrefs.set(todayString, forKey: "flutter.steps_date")
+      // CRITICAL: Save timestamp for recovery detection (iOS optimization)
+      sharedPrefs.set(Date().iso8601String, forKey: "flutter.last_periodic_save")
       sharedPrefs.synchronize()
 
       print("📱 Core Motion step count updated: \(steps) steps")
 
-      // Update notification every 100 steps or every 5 minutes
-      if steps % 100 == 0 || self.shouldUpdateNotification() {
-        self.updateStepNotification(steps: steps)
-      }
+      // Update notification more frequently (every 10 steps or every 30 seconds)
+      // This matches Android behavior for better visibility
+      self.updateStepNotification(steps: steps)
     }
 
-    // Start periodic updates every 2 minutes
-    stepUpdateTimer = Timer.scheduledTimer(withTimeInterval: 120.0, repeats: true) { [weak self] _ in
+    // CRITICAL: Start periodic updates more frequently (every 30 seconds)
+    // This ensures data is saved more often to prevent loss when app is killed (iOS optimization)
+    stepUpdateTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
       // Try HealthKit first, fallback to Core Motion
       if self?.isHealthKitAuthorized == true {
         self?.getStepsFromHealthKit()
@@ -621,8 +703,11 @@ import HealthKit
 
       sharedPrefs.set(steps, forKey: "flutter.daily_steps")
       sharedPrefs.set(todayString, forKey: "flutter.steps_date")
+      // CRITICAL: Save timestamp for recovery detection (iOS optimization)
+      sharedPrefs.set(Date().iso8601String, forKey: "flutter.last_periodic_save")
       sharedPrefs.synchronize()
 
+      // Update notification more frequently to match Android behavior
       self.updateStepNotification(steps: steps)
     }
   }
@@ -683,15 +768,52 @@ import HealthKit
   }
 
   private var lastNotificationUpdate: Date?
-  private func shouldUpdateNotification() -> Bool {
-    guard let lastUpdate = lastNotificationUpdate else {
-      lastNotificationUpdate = Date()
-      return true
-    }
-    return Date().timeIntervalSince(lastUpdate) >= 300 // 5 minutes
+  private var lastNotificationSteps: Int = 0
+  
+  private func shouldUpdateNotification(steps: Int) -> Bool {
+    // Update notification more frequently on iOS to match Android foreground service behavior
+    // Update every 10 steps (similar to Android) or every 15 seconds minimum
+    // This makes it more persistent like Android's foreground service notification
+    let stepsChanged = abs(steps - lastNotificationSteps) >= 10
+    let timeElapsed = lastNotificationUpdate == nil || Date().timeIntervalSince(lastNotificationUpdate!) >= 15
+    
+    return stepsChanged || timeElapsed
   }
 
   private func updateStepNotification(steps: Int) {
+    // Check if we should update (to avoid too frequent updates)
+    guard shouldUpdateNotification(steps: steps) else {
+      return
+    }
+    
+    // CRITICAL: Check notification authorization status before showing notification
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      guard settings.authorizationStatus == .authorized else {
+        print("⚠️ Notification permission not granted. Status: \(settings.authorizationStatus.rawValue)")
+        print("⚠️ Alert setting: \(settings.alertSetting.rawValue), Badge: \(settings.badgeSetting.rawValue)")
+        
+        // If not authorized, try requesting permission again
+        if settings.authorizationStatus == .notDetermined {
+          DispatchQueue.main.async { [weak self] in
+            self?.requestNotificationPermission()
+          }
+        }
+        return
+      }
+      
+      // Check if alerts are enabled (required for notifications to show)
+      guard settings.alertSetting == .enabled else {
+        print("⚠️ Notification alerts are disabled in settings")
+        return
+      }
+      
+      DispatchQueue.main.async { [weak self] in
+        self?.showStepNotification(steps: steps)
+      }
+    }
+  }
+  
+  private func showStepNotification(steps: Int) {
     let content = UNMutableNotificationContent()
     content.title = "Step Counter Active"
     
@@ -704,6 +826,24 @@ import HealthKit
     content.body = "Steps today: \(steps) / \(goal)"
     content.sound = nil
     content.badge = nil
+    
+    // Set category to make it more persistent (like Android foreground service)
+    content.categoryIdentifier = "STEP_COUNTER"
+    
+    // Set thread identifier to group notifications (keeps them together)
+    content.threadIdentifier = "step_counter"
+    
+    // Set interruption level to active (iOS 15+) - makes it more visible like foreground service
+    // Using .active instead of .timeSensitive (which requires special entitlements)
+    if #available(iOS 15.0, *) {
+      content.interruptionLevel = .active
+    }
+    
+    // Set relevance score (iOS 15+) - makes it more prominent in notification center
+    // Higher score (1.0) means it appears more prominently, similar to foreground service
+    if #available(iOS 15.0, *) {
+      content.relevanceScore = 1.0
+    }
 
     let request = UNNotificationRequest(
       identifier: "step_counter_notification",
@@ -711,27 +851,69 @@ import HealthKit
       trigger: nil // Immediate notification
     )
 
+    // Remove existing notification first, then add new one
+    // This ensures the notification is always visible and updated
+    UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["step_counter_notification"])
+    UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["step_counter_notification"])
+    
     UNUserNotificationCenter.current().add(request) { error in
       if let error = error {
         print("❌ Error showing step notification: \(error.localizedDescription)")
+        print("❌ Error details: \(error)")
       } else {
         print("✅ Step notification updated: \(steps) steps")
+        print("✅ Notification should be visible in notification center")
+        self.lastNotificationUpdate = Date()
+        self.lastNotificationSteps = steps
       }
     }
-
-    lastNotificationUpdate = Date()
   }
 
   // Handle app entering background
   override func applicationDidEnterBackground(_ application: UIApplication) {
     super.applicationDidEnterBackground(application)
+    
+    // Start background task to keep step tracking active (similar to Android foreground service)
+    startBackgroundTask()
+    
     // Ensure step tracking continues
     startBackgroundStepTracking()
+  }
+  
+  // Start background task to keep app active (iOS equivalent of foreground service)
+  private func startBackgroundTask() {
+    // End any existing background task
+    if backgroundTaskIdentifier != .invalid {
+      UIApplication.shared.endBackgroundTask(backgroundTaskIdentifier)
+      backgroundTaskIdentifier = .invalid
+    }
+    
+    // Start new background task
+    backgroundTaskIdentifier = UIApplication.shared.beginBackgroundTask(withName: "StepCounterBackgroundTask") { [weak self] in
+      // Task expired, restart it
+      self?.endBackgroundTask()
+      self?.startBackgroundTask()
+    }
+    
+    print("✅ Started background task for step counter (iOS foreground service equivalent)")
+  }
+  
+  // End background task
+  private func endBackgroundTask() {
+    if backgroundTaskIdentifier != .invalid {
+      UIApplication.shared.endBackgroundTask(backgroundTaskIdentifier)
+      backgroundTaskIdentifier = .invalid
+      print("⏹️ Ended background task")
+    }
   }
 
   // Handle app entering foreground
   override func applicationWillEnterForeground(_ application: UIApplication) {
     super.applicationWillEnterForeground(application)
+    
+    // End background task when app comes to foreground
+    endBackgroundTask()
+    
     // Update step count when app comes to foreground
     // Try HealthKit first, fallback to Core Motion
     if isHealthKitAuthorized {
@@ -739,5 +921,62 @@ import HealthKit
     } else {
       updateStepCountFromPedometer()
     }
+  }
+  
+  // MARK: - UNUserNotificationCenterDelegate
+  
+  // Show notifications even when app is in foreground
+  override func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    // Show notification banner and sound even when app is in foreground
+    if #available(iOS 14.0, *) {
+      completionHandler([.banner, .sound, .badge])
+    } else {
+      completionHandler([.alert, .sound, .badge])
+    }
+  }
+  
+  // Handle notification tap
+  override func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    // Handle notification tap if needed
+    completionHandler()
+  }
+  
+  // CRITICAL: Handle app termination - save data before app is killed
+  // This is iOS-specific optimization to prevent data loss
+  override func applicationWillTerminate(_ application: UIApplication) {
+    super.applicationWillTerminate(application)
+    print("⚠️ App will terminate - saving final step data")
+    
+    // Save current steps to SharedPreferences before termination
+    let prefsName = "FlutterSharedPreferences"
+    let sharedPrefs = UserDefaults(suiteName: prefsName) ?? UserDefaults.standard
+    
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "yyyy-MM-dd"
+    let todayString = dateFormatter.string(from: Date())
+    
+    // Get current steps (from HealthKit or Core Motion)
+    let currentSteps = lastStepCount
+    
+    // Save immediately (can't wait for async HealthKit query on termination)
+    sharedPrefs.set(currentSteps, forKey: "flutter.daily_steps")
+    sharedPrefs.set(todayString, forKey: "flutter.steps_date")
+    sharedPrefs.set(Date().iso8601String, forKey: "flutter.last_save_before_close")
+    sharedPrefs.set(currentSteps, forKey: "flutter.last_saved_steps")
+    sharedPrefs.set(todayString, forKey: "flutter.last_saved_date")
+    sharedPrefs.synchronize()
+    print("✅ Saved final steps on termination: \(currentSteps)")
+    
+    // Stop background tracking
+    stopBackgroundStepTracking()
+  }
+}
+
+// Helper extension for ISO8601 date string
+extension Date {
+  var iso8601String: String {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return formatter.string(from: self)
   }
 }

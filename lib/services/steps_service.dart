@@ -7,6 +7,7 @@ import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
 import '../database/steps_database.dart';
+import 'permission_service.dart';
 
 class StepsService {
   // Simplified storage keys (matching native service)
@@ -27,6 +28,7 @@ class StepsService {
   StreamSubscription<PedestrianStatus>? _pedestrianStatusStream;
   Timer? _periodicSyncTimer;
   Timer? _healthCheckTimer;
+  Timer? _periodicDatabaseSaveTimer;
 
   // Core data - simplified
   int _dailySteps = 0;
@@ -104,20 +106,30 @@ class StepsService {
       // Request permissions
       await _requestPermissions();
 
-      // Start background service
+      // Start background service (runs independently, continues when app is closed)
       await _startBackgroundService();
 
       // Start listening to pedometer (for when app is active)
+      // This calculates steps when app is open
       await _startListening();
 
-      // Periodic sync with background service
+      // Sync with background service immediately to get latest data
+      // This ensures we have the latest steps if background service was running
+      await _syncWithBackgroundService();
+
+      // Periodic sync with background service (every 2 seconds)
+      // This keeps app in sync with background service data
       _startPeriodicSync();
       
       // Start health check monitoring
       _startHealthCheckMonitoring();
+      
+      // RECOMMENDATION 4: Monitor battery optimization status
+      _monitorBatteryOptimizationStatus();
 
       print(
           'Steps Service initialized - Daily steps: $_dailySteps (Background: $_isBackgroundServiceActive)');
+      print('Background service will continue tracking steps when app is closed.');
     } catch (e) {
       print('Error initializing Steps Service: $e');
       // Ensure we have default values
@@ -169,11 +181,35 @@ class StepsService {
   }
 
   // Periodic sync with SharedPreferences (updated by background service)
+  // Sync every 10 seconds - optimal balance between responsiveness and battery efficiency
+  // Since all processing is local (SharedPreferences/database), 10 seconds is sufficient
   void _startPeriodicSync() {
     _periodicSyncTimer?.cancel();
-    _periodicSyncTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+    _periodicSyncTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
       if (!_isUpdating) {
         await _syncWithBackgroundService();
+      }
+    });
+    
+    // Also add a periodic database save to ensure data persistence
+    // This ensures steps are saved even if the app closes unexpectedly
+    // CRITICAL: Save more frequently to prevent data loss when app is killed
+    // Save every 15 seconds to minimize data loss window
+    _periodicDatabaseSaveTimer?.cancel();
+    _periodicDatabaseSaveTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
+      if (!_isUpdating) {
+        try {
+          // Always save, even if 0 steps, to ensure the date entry exists
+          await _saveToDatabase();
+          
+          // CRITICAL: Mark successful save timestamp for recovery detection
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('last_periodic_save', DateTime.now().toIso8601String());
+          
+          print('Periodic database save: $_dailySteps steps');
+        } catch (e) {
+          print('Error in periodic database save: $e');
+        }
       }
     });
   }
@@ -244,29 +280,149 @@ class StepsService {
     _isUpdating = true;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final backgroundSteps = prefs.getInt(_dailyStepsKey) ?? _dailySteps;
-      final backgroundDate = prefs.getString(_dateKey) ?? _currentDate;
+      var backgroundSteps = prefs.getInt(_dailyStepsKey) ?? _dailySteps;
+      var backgroundDate = prefs.getString(_dateKey) ?? _currentDate;
+
+      // Validate background data before using it
+      if (backgroundSteps < 0) {
+        print('WARNING: Negative background steps value: $backgroundSteps, using 0');
+        backgroundSteps = 0;
+      }
+      if (backgroundSteps > 100000) {
+        print('WARNING: Unreasonably high background steps value: $backgroundSteps, capping at 100000');
+        backgroundSteps = 100000;
+      }
+      
+      // Validate date format
+      if (backgroundDate.isNotEmpty && !_isValidDateString(backgroundDate)) {
+        print('WARNING: Invalid date format: $backgroundDate, using today');
+        backgroundDate = _getTodayString();
+      }
 
       // Update last sync time for health check
       await prefs.setString('${_dateKey}_last_update', DateTime.now().toIso8601String());
 
       // Check for day change (with timezone awareness)
-      if (backgroundDate != _currentDate) {
+      // CRITICAL: Handle day change BEFORE updating steps to prevent losing yesterday's data
+      if (backgroundDate != _currentDate && backgroundDate.isNotEmpty) {
+        print('Day change detected in sync: $_currentDate -> $backgroundDate');
+        
+        // CRITICAL: Get the best value for yesterday's steps
+        // Try to get from database first (might have been saved earlier)
+        int yesterdaySteps = _dailySteps;
+        String yesterdayDate = _currentDate;
+        
+        // EDGE CASE: Validate yesterday's date before processing
+        if (!_isValidDateString(yesterdayDate)) {
+          print('ERROR: Invalid yesterday date format: $yesterdayDate');
+          // Use current date minus 1 day as fallback
+          final fallbackDate = DateTime.now().subtract(const Duration(days: 1));
+          yesterdayDate = '${fallbackDate.year}-${fallbackDate.month.toString().padLeft(2, '0')}-${fallbackDate.day.toString().padLeft(2, '0')}';
+        }
+        
+        try {
+          final dbData = await StepsDatabase.getDailySteps(yesterdayDate);
+          if (dbData != null && dbData['total_steps'] != null) {
+            final dbSteps = dbData['total_steps'] as int;
+            // Use the higher value (database or current memory)
+            yesterdaySteps = math.max(yesterdaySteps, dbSteps);
+            print('Found yesterday\'s steps in database: $dbSteps, using: $yesterdaySteps');
+          }
+        } catch (e) {
+          print('Could not load yesterday from database: $e');
+        }
+        
+        // EDGE CASE: Validate yesterday's steps before saving
+        if (yesterdaySteps < 0) {
+          print('WARNING: Negative yesterday steps: $yesterdaySteps, setting to 0');
+          yesterdaySteps = 0;
+        }
+        if (yesterdaySteps > 100000) {
+          print('WARNING: Unreasonably high yesterday steps: $yesterdaySteps, capping at 100000');
+          yesterdaySteps = 100000;
+        }
+        
+        print('Saving yesterday\'s steps: $yesterdaySteps for date: $yesterdayDate');
+        
+        // Force save yesterday's steps to database immediately with retry logic
+        int saveRetries = 3;
+        bool saveSuccess = false;
+        while (saveRetries > 0 && !saveSuccess) {
+          try {
+            await StepsDatabase.insertOrUpdateDailySteps(
+              yesterdayDate,
+              yesterdaySteps,
+            );
+            final yesterdayDayName = _getDayAbbreviation(
+              DateTime.parse(yesterdayDate).weekday
+            );
+            await StepsDatabase.insertOrUpdateSteps(yesterdayDayName, yesterdaySteps);
+            print('CRITICAL: Saved yesterday\'s steps to database: $yesterdayDate = $yesterdaySteps');
+            saveSuccess = true;
+          } catch (e) {
+            saveRetries--;
+            if (saveRetries > 0) {
+              print('CRITICAL ERROR: Failed to save yesterday\'s steps (retrying): $e');
+              await Future.delayed(Duration(milliseconds: 200));
+            } else {
+              print('CRITICAL ERROR: Failed to save yesterday\'s steps after retries: $e');
+              // Save to SharedPreferences as last resort
+              try {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setInt('${_dailyStepsKey}_yesterday', yesterdaySteps);
+                await prefs.setString('${_dateKey}_yesterday', yesterdayDate);
+                print('Saved yesterday\'s steps to SharedPreferences as backup');
+              } catch (backupError) {
+                print('CRITICAL: Failed to save yesterday to SharedPreferences: $backupError');
+              }
+            }
+          }
+        }
+        
+        // Now handle the day change (this will reset _dailySteps to 0)
         await _checkForNewDay();
+        
+        // After day change, update to today's values from background service
+        _dailySteps = backgroundSteps;
+        _currentDate = backgroundDate;
+        
+        // Save today's initial value (might be 0)
+        await _saveToDatabase();
+        
+        _stepsController.add(_dailySteps);
+        return; // Exit early after day change to prevent double processing
       }
 
-      // Only update if we have new data
+      // Only update if we have new data (normal sync, no day change)
       if (backgroundSteps != _dailySteps || backgroundDate != _currentDate) {
         final oldSteps = _dailySteps;
+        
+        // EDGE CASE: Handle steps going backwards (should never happen, but handle gracefully)
+        if (backgroundSteps < _dailySteps) {
+          print('WARNING: Steps decreased from $_dailySteps to $backgroundSteps');
+          print('This may indicate device reset or data corruption. Keeping higher value.');
+          // Keep the higher value to prevent data loss
+          backgroundSteps = _dailySteps;
+        }
+        
         final stepIncrement = backgroundSteps > _dailySteps 
             ? backgroundSteps - _dailySteps 
             : 0;
 
+        // Validate step increment is reasonable (max 5000 steps in 10 seconds)
+        if (stepIncrement > 5000) {
+          print('WARNING: Unusually large step increment in sync: $stepIncrement');
+          print('This may indicate data corruption. Capping increment to 5000.');
+          // Cap the increment to prevent corruption
+          backgroundSteps = _dailySteps + 5000;
+        }
+
         _dailySteps = backgroundSteps;
         _currentDate = backgroundDate;
 
-        // Save to database periodically
-        if (_dailySteps % 50 == 0 && _dailySteps > oldSteps) {
+        // Always save to database when steps change to prevent data loss
+        // This ensures no steps are lost even if app closes unexpectedly
+        if (stepIncrement > 0) {
           await _saveToDatabase();
         }
 
@@ -276,8 +432,10 @@ class StepsService {
           print('Background sync: $_dailySteps steps (was: $oldSteps)');
         }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error syncing with background service: $e');
+      print('Stack trace: $stackTrace');
+      // Don't throw - allow retry on next sync cycle
     } finally {
       _isUpdating = false;
     }
@@ -369,13 +527,21 @@ class StepsService {
     final today = _getTodayString();
     final todayUTC = _getTodayStringUTC();
 
+    // EDGE CASE: Validate current date before checking
+    if (!_isValidDateString(_currentDate) && _currentDate.isNotEmpty) {
+      print('WARNING: Invalid current date format: $_currentDate, resetting to today');
+      _currentDate = today;
+    }
+
     // Check both local and UTC dates to handle timezone edge cases
-    if (_currentDate != today && _currentDate != todayUTC) {
+    // EDGE CASE: Also handle empty date strings
+    if (_currentDate.isNotEmpty && _currentDate != today && _currentDate != todayUTC) {
       print('New day detected: $today (was: $_currentDate, UTC: $todayUTC)');
 
       try {
-        // Save yesterday's data to database if we had any steps
-        if (_dailySteps > 0 && _currentDate.isNotEmpty) {
+        // Always save yesterday's data to database, even if 0 steps
+        // This ensures all days have entries in the database
+        if (_currentDate.isNotEmpty) {
           try {
             // Parse the old date (could be local or UTC)
             DateTime? yesterday;
@@ -387,13 +553,16 @@ class StepsService {
             }
             
             final dayName = _getDayAbbreviation(yesterday.weekday);
-            await StepsDatabase.insertOrUpdateSteps(dayName, _dailySteps);
-
+            
             // Save to daily history table using the stored date
+            // Always save, even with 0 steps, to ensure the date entry exists
             await StepsDatabase.insertOrUpdateDailySteps(
               _currentDate,
               _dailySteps,
             );
+            
+            // Also save to weekly table for backward compatibility
+            await StepsDatabase.insertOrUpdateSteps(dayName, _dailySteps);
 
             print('Saved yesterday\'s steps: $dayName = $_dailySteps for date: $_currentDate');
           } catch (e) {
@@ -410,12 +579,15 @@ class StepsService {
         _currentDate = today; // Use local date for consistency
         _deviceStepsAtMidnight = 0; // Will be set when we get first reading
 
-        // Initialize today's entry in database
+        // Initialize today's entry in database (always, even with 0 steps)
         try {
           await StepsDatabase.insertOrUpdateDailySteps(
             today,
             0,
           );
+          // Also initialize weekly table entry
+          final todayDayName = _getDayAbbreviation(DateTime.now().weekday);
+          await StepsDatabase.insertOrUpdateSteps(todayDayName, 0);
         } catch (e) {
           print('Error initializing today\'s entry: $e');
           // Continue even if database init fails
@@ -472,6 +644,166 @@ class StepsService {
     } else {
       print('Activity Recognition permission granted successfully!');
     }
+    
+    // RECOMMENDATION 2: Request battery optimization exemption
+    // This is critical to prevent the system from killing the background service
+    await _requestBatteryOptimizationExemption();
+  }
+  
+  // RECOMMENDATION 2: Request battery optimization exemption
+  // This prevents the system from killing the background service when memory is low
+  Future<void> _requestBatteryOptimizationExemption() async {
+    if (Platform.isIOS) {
+      // iOS doesn't have battery optimization like Android
+      return;
+    }
+    
+    try {
+      // Check if battery optimization is already ignored
+      final isIgnored = await _nativeChannel.invokeMethod<bool>('isIgnoringBatteryOptimizations');
+      
+      if (isIgnored == true) {
+        print('Battery optimization is already ignored - background service will continue running');
+        return;
+      }
+      
+      // Request to ignore battery optimizations
+      print('Requesting battery optimization exemption...');
+      final result = await _nativeChannel.invokeMethod<bool>('requestIgnoreBatteryOptimizations');
+      
+      if (result == true) {
+        print('Battery optimization exemption granted - background service protected');
+      } else {
+        print('WARNING: Battery optimization exemption not granted');
+        print('The background service may be killed by the system when memory is low');
+        print('User should manually disable battery optimization in system settings');
+      }
+    } catch (e) {
+      print('Error requesting battery optimization exemption: $e');
+      // Don't fail initialization if this fails
+    }
+  }
+  
+  // RECOMMENDATION 4: Check battery optimization status and warn if needed
+  Future<bool> isBatteryOptimizationIgnored() async {
+    if (Platform.isIOS) {
+      return true; // iOS doesn't have this issue
+    }
+    
+    try {
+      final isIgnored = await _nativeChannel.invokeMethod<bool>('isIgnoringBatteryOptimizations');
+      return isIgnored ?? false;
+    } catch (e) {
+      print('Error checking battery optimization status: $e');
+      return false;
+    }
+  }
+  
+  // Check all step counter permissions and settings
+  Future<Map<String, dynamic>> checkStepCounterPermissions() async {
+    Map<String, dynamic> status = {
+      'stepCountingAvailable': await isStepCountingAvailable,
+      'backgroundServiceActive': _isBackgroundServiceActive,
+    };
+    
+    if (Platform.isAndroid) {
+      final activityStatus = await Permission.activityRecognition.status;
+      final batteryOptimized = await isBatteryOptimizationIgnored();
+      
+      status['activityRecognition'] = activityStatus.isGranted;
+      status['activityRecognitionStatus'] = activityStatus.toString();
+      status['batteryOptimizationIgnored'] = batteryOptimized;
+      status['needsActivityRecognition'] = !activityStatus.isGranted;
+      status['needsBatteryOptimization'] = !batteryOptimized;
+    } else {
+      // iOS: Check notification permission via native
+      try {
+        final isAuthorized = await _nativeChannel.invokeMethod<bool>('checkNotificationPermission') ?? false;
+        status['notificationPermission'] = isAuthorized;
+        status['needsNotificationPermission'] = !isAuthorized;
+      } catch (e) {
+        status['notificationPermission'] = false;
+        status['needsNotificationPermission'] = true;
+      }
+    }
+    
+    return status;
+  }
+  
+  // Request all step counter permissions (for re-enabling)
+  Future<Map<String, bool>> requestStepCounterPermissions() async {
+    Map<String, bool> results = {};
+    
+    if (Platform.isAndroid) {
+      // Request activity recognition
+      final activityStatus = await Permission.activityRecognition.status;
+      if (!activityStatus.isGranted) {
+        final result = await Permission.activityRecognition.request();
+        results['activityRecognition'] = result.isGranted;
+      } else {
+        results['activityRecognition'] = true;
+      }
+      
+      // Request battery optimization exemption
+      if (!await isBatteryOptimizationIgnored()) {
+        try {
+          await _nativeChannel.invokeMethod<bool>('requestIgnoreBatteryOptimizations');
+          // Check again after request
+          results['batteryOptimization'] = await isBatteryOptimizationIgnored();
+        } catch (e) {
+          results['batteryOptimization'] = false;
+        }
+      } else {
+        results['batteryOptimization'] = true;
+      }
+    } else {
+      // iOS: Request notification permission via native
+      try {
+        await _nativeChannel.invokeMethod('requestNotificationPermission');
+        // Check again after request
+        final isAuthorized = await _nativeChannel.invokeMethod<bool>('checkNotificationPermission') ?? false;
+        results['notification'] = isAuthorized;
+      } catch (e) {
+        results['notification'] = false;
+      }
+    }
+    
+    // Restart background service after permissions are granted
+    if (results.values.every((v) => v)) {
+      await _restartBackgroundService();
+    }
+    
+    return results;
+  }
+  
+  // Open app settings for manual permission enabling
+  Future<void> openStepCounterSettings() async {
+    await PermissionService.openSettings();
+  }
+  
+  // RECOMMENDATION 4: Monitor battery optimization status periodically
+  // Warn if it's not ignored (service may be killed)
+  Timer? _batteryOptimizationCheckTimer;
+  void _monitorBatteryOptimizationStatus() {
+    _batteryOptimizationCheckTimer?.cancel();
+    // Check every 5 minutes
+    _batteryOptimizationCheckTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
+      if (Platform.isAndroid) {
+        final isIgnored = await isBatteryOptimizationIgnored();
+        if (!isIgnored) {
+          print('WARNING: Battery optimization is NOT ignored');
+          print('The background service may be killed by the system when memory is low');
+          print('User should disable battery optimization in system settings');
+          // Store warning for UI to display
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('battery_optimization_warning', true);
+        } else {
+          // Clear warning if it's now ignored
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('battery_optimization_warning', false);
+        }
+      }
+    });
   }
 
   // Start listening to step count and pedestrian status
@@ -539,19 +871,47 @@ class StepsService {
 
       // Initialize baseline for new day or first run
     if (_deviceStepsAtMidnight == 0) {
-      // If we have existing daily steps, calculate baseline from that
-      // Otherwise, assume we're starting fresh today
-      if (_dailySteps > 0) {
+      // Check if this is first install or first time enabling real steps
+      final prefs = await SharedPreferences.getInstance();
+      final isFirstTime = prefs.getBool('steps_service_initialized') != true;
+      
+      if (isFirstTime || _dailySteps == 0) {
+        // First install or first time enabling real steps - start from 0
+        // Set baseline to current device steps so we count from NOW
+        _deviceStepsAtMidnight = currentDeviceSteps;
+        _dailySteps = 0;
+        print(
+            'First time setup: Setting baseline to current device steps ($currentDeviceSteps)');
+        print('Steps will be counted from this point forward (starting at 0).');
+        print('This baseline is shared with background service for consistent tracking.');
+        
+        // Mark that service has been initialized
+        await prefs.setBool('steps_service_initialized', true);
+        
+        // Save baseline to SharedPreferences so background service can use it
+        await _saveStoredData();
+        
+        // Sync with background service to ensure it has the same baseline
+        await _syncWithBackgroundService();
+        
+        return; // Don't process this reading, wait for next update
+      } else if (_dailySteps > 0) {
+        // We have existing daily steps, calculate baseline from that
+        // This happens when app reopens and we have stored steps
         _deviceStepsAtMidnight = currentDeviceSteps - _dailySteps;
         print(
-            'Set device baseline from existing steps: $_deviceStepsAtMidnight (current daily: $_dailySteps, device total: $currentDeviceSteps)');
+            'App reopened: Set device baseline from existing steps: $_deviceStepsAtMidnight (current daily: $_dailySteps, device total: $currentDeviceSteps)');
+        print('Background service was tracking steps while app was closed.');
+        await _saveStoredData();
       } else {
-        // Starting fresh - use current device steps as baseline
+        // New day - use current device steps as baseline
         _deviceStepsAtMidnight = currentDeviceSteps;
+        _dailySteps = 0;
         print(
             'Set device baseline for new day: $_deviceStepsAtMidnight (device total: $currentDeviceSteps)');
+        await _saveStoredData();
+        return; // Don't process this reading, wait for next update
       }
-      await _saveStoredData();
     }
 
     // Calculate today's steps - this is the accurate count from device
@@ -571,6 +931,34 @@ class StepsService {
       return;
     }
 
+    // CRITICAL: Detect and fix incorrect baseline (when real steps are first enabled)
+    // If calculated steps are unreasonably high (>15k) and we just enabled real steps,
+    // it means the baseline was set incorrectly (using lifetime steps instead of today's steps)
+    if (newDailySteps > 15000 && _dailySteps == 0) {
+      print('WARNING: Detected unreasonably high step count ($newDailySteps) on first reading.');
+      print('This likely means baseline was set incorrectly. Resetting to start fresh.');
+      // Reset baseline to current device steps and start counting from now
+      _deviceStepsAtMidnight = currentDeviceSteps;
+      _dailySteps = 0;
+      await _saveStoredData();
+      return; // Don't process this reading, wait for next update
+    }
+
+    // Also check if steps jump dramatically (more than 20k in one update)
+    // This indicates the baseline was wrong
+    if (newDailySteps > _dailySteps + 20000 && _dailySteps > 0) {
+      print('WARNING: Detected dramatic step jump (${newDailySteps - _dailySteps} steps).');
+      print('Baseline may be incorrect. Recalculating...');
+      // Recalculate baseline based on current daily steps
+      _deviceStepsAtMidnight = currentDeviceSteps - _dailySteps;
+      if (_deviceStepsAtMidnight < 0) {
+        _deviceStepsAtMidnight = currentDeviceSteps;
+        _dailySteps = 0;
+      }
+      await _saveStoredData();
+      return;
+    }
+
     // Apply reasonable limits (max ~60k steps per day for very active users)
     if (newDailySteps > 60000) {
       print('Unreasonable step count detected: $newDailySteps, capping at 60000');
@@ -581,6 +969,14 @@ class StepsService {
     }
 
     // Only update if we have new steps and they're reasonable
+    // EDGE CASE: Handle steps going backwards (should never happen)
+    if (newDailySteps < _dailySteps) {
+      print('WARNING: Steps decreased from $_dailySteps to $newDailySteps');
+      print('This may indicate device reset or data corruption. Keeping higher value.');
+      // Keep the higher value to prevent data loss
+      newDailySteps = _dailySteps;
+    }
+    
     if (newDailySteps > _dailySteps) {
       final stepIncrement = newDailySteps - _dailySteps;
 
@@ -588,7 +984,11 @@ class StepsService {
       if (stepIncrement > 2000) {
         print(
             'Large step increment detected: $stepIncrement, may be catch-up from app being closed');
-        // Allow it but log it
+        // EDGE CASE: Cap unreasonable increments to prevent corruption
+        if (stepIncrement > 10000) {
+          print('WARNING: Extremely large increment ($stepIncrement), capping to 10000');
+          newDailySteps = _dailySteps + 10000;
+        }
       }
 
       _dailySteps = newDailySteps;
@@ -597,17 +997,26 @@ class StepsService {
 
       await _saveStoredData();
 
-      // Save to database every 50 steps or every 2 minutes
-      final timeSinceLastSave = now.difference(_lastUpdateTime).inMinutes;
-      if (stepIncrement >= 50 || timeSinceLastSave >= 2) {
+      // Always save to database when steps change to prevent data loss
+      // This ensures no steps are lost even if app closes unexpectedly
+      if (stepIncrement > 0) {
         await _saveToDatabase();
       }
 
       _stepsController.add(_dailySteps);
       print('Daily steps updated: $_dailySteps (+$stepIncrement)');
     }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error handling step count: $e');
+      print('Stack trace: $stackTrace');
+      // Ensure we don't get stuck in updating state
+      _isUpdating = false;
+      // Try to recover by syncing with background service
+      try {
+        await _syncWithBackgroundService();
+      } catch (syncError) {
+        print('Error during recovery sync: $syncError');
+      }
     } finally {
       _isUpdating = false;
     }
@@ -646,8 +1055,23 @@ class StepsService {
 
   // Handle step count errors
   void _handleStepCountError(dynamic error) {
-    print('Pedometer not available or permission denied: $error');
-    //_simulateSteps();
+    print('Pedometer error: $error');
+    _isUsingRealPedometer = false;
+    
+    // EDGE CASE: Try to recover from stream errors
+    // Cancel existing stream and attempt to restart after delay
+    _stepCountStream?.cancel();
+    _stepCountStream = null;
+    
+    // Attempt to restart after a delay
+    Future.delayed(const Duration(seconds: 5), () async {
+      try {
+        print('Attempting to recover pedometer stream...');
+        await _startListening();
+      } catch (e) {
+        print('Failed to recover pedometer stream: $e');
+      }
+    });
   }
 
   // Handle pedestrian status updates
@@ -707,16 +1131,37 @@ class StepsService {
   // With retry logic for production reliability
   // This is the single source of truth - all writes go through here
   Future<void> _saveToDatabase() async {
-    if (_dailySteps == 0) return;
-
+    // EDGE CASE: Prevent concurrent saves
+    if (_isUpdating) {
+      print('Save already in progress, skipping duplicate save');
+      return;
+    }
+    
+    // Always save, even if steps are 0, to ensure the date entry exists
     final today = _getDayAbbreviation(DateTime.now().weekday);
     final todayDateStr = _getTodayString();
+    
+    // EDGE CASE: Validate data before saving
+    if (_dailySteps < 0) {
+      print('WARNING: Negative steps detected: $_dailySteps, setting to 0');
+      _dailySteps = 0;
+    }
+    if (_dailySteps > 100000) {
+      print('WARNING: Unreasonably high steps: $_dailySteps, capping at 100000');
+      _dailySteps = 100000;
+    }
+    if (!_isValidDateString(todayDateStr)) {
+      print('ERROR: Invalid date string: $todayDateStr, cannot save');
+      return;
+    }
+    
     int retries = 3;
     int delayMs = 100;
 
     while (retries > 0) {
       try {
         // Save to daily history (primary storage - single source of truth)
+        // Always save to ensure the date entry exists, even with 0 steps
         await StepsDatabase.insertOrUpdateDailySteps(
           todayDateStr,
           _dailySteps,
@@ -726,11 +1171,19 @@ class StepsService {
         await StepsDatabase.insertOrUpdateSteps(today, _dailySteps);
         
         // Update SharedPreferences cache (for background service)
+        // This ensures notifications read the same value
         await _saveStoredData();
         
-        print('Saved steps to database (SSoT): $today = $_dailySteps');
+        print('Saved steps to database (SSoT): $today = $_dailySteps for date: $todayDateStr');
         return; // Success, exit retry loop
       } catch (e) {
+        // EDGE CASE: Handle database locked errors specifically
+        final errorStr = e.toString().toLowerCase();
+        if (errorStr.contains('locked') || errorStr.contains('database is locked')) {
+          print('Database locked, waiting longer before retry...');
+          delayMs = 500; // Wait longer for locked database
+        }
+        
         retries--;
         if (retries > 0) {
           print('Error saving steps to database (retrying in ${delayMs}ms): $e');
@@ -751,6 +1204,26 @@ class StepsService {
       }
     }
   }
+  
+  // Validate date string format (YYYY-MM-DD)
+  bool _isValidDateString(String dateStr) {
+    if (dateStr.isEmpty) return false;
+    try {
+      final parts = dateStr.split('-');
+      if (parts.length != 3) return false;
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final day = int.parse(parts[2]);
+      if (year < 2020 || year > 2100) return false;
+      if (month < 1 || month > 12) return false;
+      if (day < 1 || day > 31) return false;
+      // Try to parse as DateTime to validate
+      DateTime.parse(dateStr);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 
 
   // Load stored data - Single Source of Truth pattern
@@ -760,34 +1233,197 @@ class StepsService {
       final prefs = await SharedPreferences.getInstance();
       final today = _getTodayString();
       
+      // CRITICAL: Check if app was killed and recover data
+      // The background service saves to SharedPreferences, so we need to sync that data
+      await _recoverFromAppKill(prefs, today);
+      
+      // Check if this is first install (no data exists)
+      final hasStoredDate = prefs.containsKey(_dateKey);
+      final hasStoredSteps = prefs.containsKey(_dailyStepsKey);
+      
       // Try to load from database first (single source of truth)
+      int dbSteps = 0;
+      bool hasDbData = false;
       try {
         final dbData = await StepsDatabase.getDailySteps(today);
         if (dbData != null && dbData['total_steps'] != null) {
-          _dailySteps = dbData['total_steps'] as int;
-          print('Loaded steps from database: $_dailySteps');
+          dbSteps = dbData['total_steps'] as int;
+          hasDbData = true;
+          print('Loaded steps from database: $dbSteps');
         }
       } catch (e) {
         print('Could not load from database, using SharedPreferences: $e');
       }
       
-      // Fallback to SharedPreferences if database doesn't have today's data
-      if (_dailySteps == 0) {
-        _dailySteps = prefs.getInt(_dailyStepsKey) ?? 0;
+      // Detect first install: no stored data in both database and SharedPreferences
+      final isFirstInstall = !hasStoredDate && !hasStoredSteps && !hasDbData;
+      
+      if (isFirstInstall) {
+        print('First install detected - starting from 0 steps');
+        _dailySteps = 0;
+        _deviceStepsAtMidnight = 0;
+        _currentDate = today;
+        _dailyGoal = prefs.getInt(_goalKey) ?? 10000;
+        
+        // Initialize today's entry in database with 0 steps
+        try {
+          await StepsDatabase.insertOrUpdateDailySteps(today, 0);
+          final todayDayName = _getDayAbbreviation(DateTime.now().weekday);
+          await StepsDatabase.insertOrUpdateSteps(todayDayName, 0);
+        } catch (e) {
+          print('Error initializing first install data: $e');
+        }
+        
+        // Save to SharedPreferences to mark that app has been initialized
+        await prefs.setInt(_dailyStepsKey, 0);
+        await prefs.setString(_dateKey, today);
+        await prefs.setInt(_deviceStepsKey, 0);
+        await prefs.setBool('steps_service_initialized', true);
+        
+        print('First install: Initialized with 0 steps');
+        _stepsController.add(_dailySteps);
+        return;
+      }
+      
+      // Get steps from SharedPreferences (may be more recent from background service)
+      // EDGE CASE: Handle SharedPreferences corruption (wrong data type)
+      int prefsSteps = 0;
+      try {
+        final prefsValue = prefs.get(_dailyStepsKey);
+        if (prefsValue is int) {
+          prefsSteps = prefsValue;
+        } else if (prefsValue is String) {
+          prefsSteps = int.tryParse(prefsValue) ?? 0;
+        } else if (prefsValue != null) {
+          print('WARNING: Unexpected data type in SharedPreferences for steps: ${prefsValue.runtimeType}');
+          // Clear corrupted data
+          await prefs.remove(_dailyStepsKey);
+        }
+      } catch (e) {
+        print('Error reading steps from SharedPreferences: $e');
+        prefsSteps = 0;
+      }
+      
+      // Validate loaded steps - if unreasonably high (>15k), reset to 0
+      // This fixes cases where baseline was set incorrectly when real steps were first enabled
+      int loadedSteps = math.max(dbSteps, prefsSteps);
+      if (loadedSteps > 15000) {
+        print('WARNING: Detected unreasonably high step count ($loadedSteps) on load.');
+        print('This may be from incorrect baseline. Resetting to 0.');
+        loadedSteps = 0;
+        // Clear the stored baseline so it gets recalculated
+        _deviceStepsAtMidnight = 0;
+        // Update database and SharedPreferences
+        try {
+          await StepsDatabase.insertOrUpdateDailySteps(today, 0);
+          final todayDayName = _getDayAbbreviation(DateTime.now().weekday);
+          await StepsDatabase.insertOrUpdateSteps(todayDayName, 0);
+          await prefs.setInt(_dailyStepsKey, 0);
+          await prefs.setInt(_deviceStepsKey, 0);
+        } catch (e) {
+          print('Error resetting steps: $e');
+        }
+      }
+      
+      _dailySteps = loadedSteps;
+      
+      // If SharedPreferences has a higher value (and it's reasonable), update database
+      if (prefsSteps > dbSteps && prefsSteps <= 15000) {
+        print('SharedPreferences has higher step count ($prefsSteps > $dbSteps), updating database');
+        try {
+          await StepsDatabase.insertOrUpdateDailySteps(today, prefsSteps);
+          final todayDayName = _getDayAbbreviation(DateTime.now().weekday);
+          await StepsDatabase.insertOrUpdateSteps(todayDayName, prefsSteps);
+        } catch (e) {
+          print('Error updating database with SharedPreferences value: $e');
+        }
       }
       
       // Load other data from SharedPreferences (these are not in database)
-      _dailyGoal = prefs.getInt(_goalKey) ?? 10000;
-      _deviceStepsAtMidnight = prefs.getInt(_deviceStepsKey) ?? 0;
-      _currentDate = prefs.getString(_dateKey) ?? today;
+      // EDGE CASE: Handle SharedPreferences corruption for all fields
+      try {
+        final goalValue = prefs.get(_goalKey);
+        if (goalValue is int) {
+          _dailyGoal = goalValue;
+        } else {
+          _dailyGoal = 10000;
+        }
+      } catch (e) {
+        print('Error reading goal from SharedPreferences: $e');
+        _dailyGoal = 10000;
+      }
+      
+      try {
+        final deviceStepsValue = prefs.get(_deviceStepsKey);
+        if (deviceStepsValue is int) {
+          _deviceStepsAtMidnight = deviceStepsValue;
+        } else {
+          _deviceStepsAtMidnight = 0;
+        }
+      } catch (e) {
+        print('Error reading device steps from SharedPreferences: $e');
+        _deviceStepsAtMidnight = 0;
+      }
+      
+      try {
+        final dateValue = prefs.getString(_dateKey);
+        if (dateValue != null && _isValidDateString(dateValue)) {
+          _currentDate = dateValue;
+        } else {
+          _currentDate = today;
+          if (dateValue != null) {
+            print('WARNING: Invalid date format in SharedPreferences: $dateValue');
+            await prefs.remove(_dateKey);
+          }
+        }
+      } catch (e) {
+        print('Error reading date from SharedPreferences: $e');
+        _currentDate = today;
+      }
       
       // If date doesn't match today, check for day change
-      if (_currentDate != today) {
+      // CRITICAL: Save yesterday's steps before day change to prevent data loss
+      if (_currentDate != today && _currentDate.isNotEmpty) {
+        print('Day change detected on load: $_currentDate -> $today');
+        
+        // CRITICAL: Get the best value for yesterday's steps
+        // Try to get from database first (might have been saved earlier)
+        int yesterdaySteps = _dailySteps;
+        
+        try {
+          final dbData = await StepsDatabase.getDailySteps(_currentDate);
+          if (dbData != null && dbData['total_steps'] != null) {
+            final dbSteps = dbData['total_steps'] as int;
+            // Use the higher value (database or current memory)
+            yesterdaySteps = math.max(yesterdaySteps, dbSteps);
+            print('Found yesterday\'s steps in database on load: $dbSteps, using: $yesterdaySteps');
+          }
+        } catch (e) {
+          print('Could not load yesterday from database on load: $e');
+        }
+        
+        print('Saving yesterday\'s steps before day change: $yesterdaySteps for $_currentDate');
+        
+        // Save yesterday's steps to database BEFORE day change
+        try {
+          await StepsDatabase.insertOrUpdateDailySteps(
+            _currentDate,
+            yesterdaySteps,
+          );
+          final yesterdayDayName = _getDayAbbreviation(
+            DateTime.parse(_currentDate).weekday
+          );
+          await StepsDatabase.insertOrUpdateSteps(yesterdayDayName, yesterdaySteps);
+          print('Saved yesterday\'s steps on load: $_currentDate = $yesterdaySteps');
+        } catch (e) {
+          print('Error saving yesterday\'s steps on load: $e');
+        }
+        
         await _checkForNewDay();
       }
 
       print('Loaded stored data (Single Source of Truth):');
-      print('  Daily steps: $_dailySteps (from ${_dailySteps > 0 ? "database" : "prefs"})');
+      print('  Daily steps: $_dailySteps (database: $dbSteps, prefs: $prefsSteps)');
       print('  Daily goal: $_dailyGoal');
       print('  Date: $_currentDate');
       print('  Device baseline: $_deviceStepsAtMidnight');
@@ -805,7 +1441,7 @@ class StepsService {
   }
 
   // Save stored data - Single Source of Truth pattern
-  // Database is primary, SharedPreferences is cache for background service
+  // Database is primary, SharedPreferences is cache for background service and notifications
   Future<void> _saveStoredData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -817,11 +1453,15 @@ class StepsService {
           today,
           _dailySteps,
         );
+        // Also update weekly table for backward compatibility
+        final todayDayName = _getDayAbbreviation(DateTime.now().weekday);
+        await StepsDatabase.insertOrUpdateSteps(todayDayName, _dailySteps);
       } catch (e) {
         print('Warning: Could not save to database, using SharedPreferences only: $e');
       }
 
-      // Also save to SharedPreferences as cache (for background service)
+      // Also save to SharedPreferences as cache (for background service and notifications)
+      // This ensures notifications read the same value as the steps page
       await prefs.setInt(_dailyStepsKey, _dailySteps);
       await prefs.setInt(_goalKey, _dailyGoal);
       await prefs.setInt(_deviceStepsKey, _deviceStepsAtMidnight);
@@ -829,6 +1469,8 @@ class StepsService {
       
       // Update last sync time for health check
       await prefs.setString('${_dateKey}_last_update', DateTime.now().toIso8601String());
+      
+      print('Saved stored data: $_dailySteps steps for $_currentDate (goal: $_dailyGoal)');
     } catch (e) {
       print('Error saving stored data: $e');
     }
@@ -929,12 +1571,24 @@ class StepsService {
   }
 
   // Simple sync method for app resume
+  // Called when app comes back to foreground after being closed
   Future<void> syncOnAppResume() async {
     try {
       print('Syncing steps on app resume...');
+      print('Background service was tracking steps while app was closed.');
+      
+      // Check for day change first
       await _checkForNewDay();
-      await forceSyncFromSharedPreferences(); // Force sync latest data from background service
+      
+      // Force sync latest data from background service
+      // Background service updates SharedPreferences, we sync it here
+      await forceSyncFromSharedPreferences();
+      
+      // Also sync with background service to ensure we have the absolute latest
+      await _syncWithBackgroundService();
+      
       print('App resume sync completed - Current steps: $_dailySteps');
+      print('Steps tracked while app was closed have been synced.');
     } catch (e) {
       print('Error syncing on app resume: $e');
     }
@@ -958,9 +1612,111 @@ class StepsService {
   double getProgressPercentage() => (_dailySteps / _dailyGoal).clamp(0.0, 1.0);
   int getRemainingSteps() => math.max(0, _dailyGoal - _dailySteps);
 
+  // Save steps before app closes - critical for data persistence
+  Future<void> saveBeforeAppCloses() async {
+    try {
+      print('Saving steps before app closes: $_dailySteps');
+      // Force save current steps to database
+      await _saveToDatabase();
+      // Also ensure SharedPreferences is updated (this is critical - background service reads from here)
+      await _saveStoredData();
+      
+      // CRITICAL: Mark that we saved successfully before close
+      // This helps detect if app was killed vs normal close
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_save_before_close', DateTime.now().toIso8601String());
+      await prefs.setInt('last_saved_steps', _dailySteps);
+      await prefs.setString('last_saved_date', _currentDate);
+      
+      print('Steps saved successfully before app close');
+    } catch (e) {
+      print('Error saving steps before app close: $e');
+    }
+  }
+  
+  // CRITICAL: Recover data when app restarts after being killed by the system
+  // 
+  // What happens when app is killed:
+  // 1. Flutter app code stops immediately - no chance to save
+  // 2. Background service (native Android/iOS) may continue running IF:
+  //    - It's a foreground service with notification
+  //    - System hasn't killed it due to memory pressure
+  // 3. Background service saves to SharedPreferences (not database)
+  // 4. When app restarts, we need to:
+  //    - Check SharedPreferences for steps updated by background service
+  //    - Sync those steps to database
+  //    - Recover any lost data
+  //
+  // The background service continues running and saves to SharedPreferences
+  // We need to sync that data to the database
+  Future<void> _recoverFromAppKill(SharedPreferences prefs, String today) async {
+    try {
+      // Check if there's data in SharedPreferences that's not in database
+      final prefsSteps = prefs.getInt(_dailyStepsKey) ?? 0;
+      final prefsDate = prefs.getString(_dateKey) ?? today;
+      
+      // Check if app was killed (no last_save_before_close timestamp)
+      final lastSaveTime = prefs.getString('last_save_before_close');
+      final lastSavedSteps = prefs.getInt('last_saved_steps') ?? 0;
+      final lastSavedDate = prefs.getString('last_saved_date') ?? '';
+      
+      // If we have steps in SharedPreferences but no recent save timestamp,
+      // it means the app was killed and background service updated SharedPreferences
+      if (prefsSteps > 0 && prefsDate == today) {
+        try {
+          // Check if database has this data
+          final dbData = await StepsDatabase.getDailySteps(today);
+          final dbSteps = dbData?['total_steps'] as int? ?? 0;
+          
+          // If SharedPreferences has more steps than database, background service was updating
+          // This means app was killed and we need to recover
+          if (prefsSteps > dbSteps) {
+            print('RECOVERY: App was killed, recovering steps from background service');
+            print('  SharedPreferences: $prefsSteps, Database: $dbSteps');
+            
+            // Save the recovered steps to database
+            await StepsDatabase.insertOrUpdateDailySteps(today, prefsSteps);
+            final todayDayName = _getDayAbbreviation(DateTime.now().weekday);
+            await StepsDatabase.insertOrUpdateSteps(todayDayName, prefsSteps);
+            
+            print('RECOVERY: Saved recovered steps to database: $prefsSteps');
+          }
+          
+          // Also check if yesterday's steps need recovery
+          if (lastSavedDate.isNotEmpty && lastSavedDate != today) {
+            try {
+              final yesterdayDbData = await StepsDatabase.getDailySteps(lastSavedDate);
+              final yesterdayDbSteps = yesterdayDbData?['total_steps'] as int? ?? 0;
+              
+              // If we have saved steps for yesterday that aren't in database, recover them
+              if (lastSavedSteps > 0 && lastSavedSteps > yesterdayDbSteps) {
+                print('RECOVERY: Recovering yesterday\'s steps: $lastSavedSteps for $lastSavedDate');
+                await StepsDatabase.insertOrUpdateDailySteps(lastSavedDate, lastSavedSteps);
+                final yesterdayDayName = _getDayAbbreviation(
+                  DateTime.parse(lastSavedDate).weekday
+                );
+                await StepsDatabase.insertOrUpdateSteps(yesterdayDayName, lastSavedSteps);
+              }
+            } catch (e) {
+              print('Error recovering yesterday\'s steps: $e');
+            }
+          }
+        } catch (e) {
+          print('Error during recovery: $e');
+        }
+      }
+    } catch (e) {
+      print('Error in _recoverFromAppKill: $e');
+    }
+  }
+
   void dispose() {
+    // Save before disposing
+    saveBeforeAppCloses();
+    
     _periodicSyncTimer?.cancel();
     _healthCheckTimer?.cancel();
+    _periodicDatabaseSaveTimer?.cancel();
     _stepCountStream?.cancel();
     _pedestrianStatusStream?.cancel();
     _stepsController.close();

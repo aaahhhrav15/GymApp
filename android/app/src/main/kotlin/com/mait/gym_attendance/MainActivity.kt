@@ -3,8 +3,10 @@ package com.mait.gym_attendance
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import io.flutter.embedding.android.FlutterActivity
@@ -65,6 +67,26 @@ class MainActivity : FlutterActivity() {
                     } catch (e: Exception) {
                         android.util.Log.e("MainActivity", "Error stopping step counter service", e)
                         result.error("UNAVAILABLE", "Failed to stop step counter service", null)
+                    }
+                }
+                "isIgnoringBatteryOptimizations" -> {
+                    try {
+                        val isIgnored = isIgnoringBatteryOptimizations()
+                        android.util.Log.d("MainActivity", "Battery optimization ignored: $isIgnored")
+                        result.success(isIgnored)
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "Error checking battery optimization", e)
+                        result.error("UNAVAILABLE", "Failed to check battery optimization", null)
+                    }
+                }
+                "requestIgnoreBatteryOptimizations" -> {
+                    try {
+                        val granted = requestIgnoreBatteryOptimizations()
+                        android.util.Log.d("MainActivity", "Battery optimization request result: $granted")
+                        result.success(granted)
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "Error requesting battery optimization", e)
+                        result.error("UNAVAILABLE", "Failed to request battery optimization", null)
                     }
                 }
                 else -> {
@@ -155,6 +177,50 @@ class MainActivity : FlutterActivity() {
                 e.printStackTrace()
             }
         }
+    }
+    
+    // RECOMMENDATION 2: Check if battery optimization is ignored
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            val packageName = packageName
+            return powerManager.isIgnoringBatteryOptimizations(packageName)
+        }
+        return true // On older versions, assume it's ignored
+    }
+    
+    // RECOMMENDATION 2: Request to ignore battery optimizations
+    private fun requestIgnoreBatteryOptimizations(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Check if already ignored
+            if (isIgnoringBatteryOptimizations()) {
+                android.util.Log.d("MainActivity", "Battery optimization already ignored")
+                return true
+            }
+            
+            try {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+                val packageName = packageName
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+                android.util.Log.d("MainActivity", "Opened battery optimization settings")
+                // Return false because we can't know if user granted it until they come back
+                return false
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Error requesting battery optimization exemption", e)
+                // Fallback: Open battery optimization settings directly
+                try {
+                    val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    startActivity(intent)
+                } catch (fallbackException: Exception) {
+                    android.util.Log.e("MainActivity", "Error opening battery settings", fallbackException)
+                }
+                return false
+            }
+        }
+        return true // On older versions, assume it's always ignored
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -48,6 +48,7 @@ import 'services/connectivity_service.dart';
 import 'l10n/app_localizations.dart';
 import 'services/water_notification_service.dart';
 import 'services/permission_service.dart';
+import 'services/steps_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'widgets/edge_to_edge_wrapper.dart';
 import 'services/navigation_service.dart';
@@ -174,6 +175,29 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       _syncStepsOnResume();
       _rescheduleWaterRemindersOnResume();
       _updateNotificationsOnResume();
+    } else if (state == AppLifecycleState.paused || 
+               state == AppLifecycleState.detached || 
+               state == AppLifecycleState.inactive) {
+      // App is being paused/closed - save steps to prevent data loss
+      print('App pausing/closing - saving steps to database');
+      _saveStepsBeforePause();
+    }
+  }
+
+  void _saveStepsBeforePause() {
+    try {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          final stepsProvider =
+              Provider.of<StepsProvider>(context, listen: false);
+          // Access the service directly to save
+          StepsService.instance.saveBeforeAppCloses();
+        } catch (e) {
+          print('Error saving steps on pause: $e');
+        }
+      });
+    } catch (e) {
+      print('Error in _saveStepsBeforePause: $e');
     }
   }
 

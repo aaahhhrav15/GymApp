@@ -114,7 +114,8 @@ class StepCounterService : Service(), SensorEventListener {
             }
         }
         
-        return START_STICKY // Restart if killed by system
+        // RECOMMENDATION 1: Return START_STICKY to ensure service restarts if killed by system
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -541,6 +542,20 @@ class StepCounterService : Service(), SensorEventListener {
 
     override fun onDestroy() {
         super.onDestroy()
+        // RECOMMENDATION 1: Save data before service is destroyed
+        // This ensures steps are saved even if service is killed
+        try {
+            saveServiceData()
+            val currentSteps = try {
+                sharedPreferences.getLong(KEY_DAILY_STEPS, 0L).toInt()
+            } catch (e: ClassCastException) {
+                0
+            }
+            Log.d("StepService", "Service destroyed - saved final steps: $currentSteps")
+        } catch (e: Exception) {
+            Log.e("StepService", "Error saving data on destroy", e)
+        }
+        
         stopStepCounting()
         stopPeriodicDayCheck()
         cancelMidnightAlarm()

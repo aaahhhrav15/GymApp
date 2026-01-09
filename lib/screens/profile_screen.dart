@@ -11,6 +11,9 @@ import 'edit_profile_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/steps_service.dart';
+import '../services/permission_service.dart';
+import 'dart:io' show Platform;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -939,9 +942,180 @@ class _ProfileScreenState extends State<ProfileScreen> {
               );
             },
           ),
+
+          SizedBox(height: screenHeight * 0.012),
+
+          // Step Counter Permissions
+          _buildStepCounterPermissionsTile(l10n),
         ],
       ),
     );
+  }
+  
+  Widget _buildStepCounterPermissionsTile(AppLocalizations l10n) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    return FutureBuilder<Map<String, dynamic>>(
+      future: StepsService.instance.checkStepCounterPermissions(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+        
+        final status = snapshot.data!;
+        final needsPermission = Platform.isAndroid 
+            ? (status['needsActivityRecognition'] == true || status['needsBatteryOptimization'] == true)
+            : (status['needsNotificationPermission'] == true);
+        
+        if (!needsPermission) {
+          return const SizedBox.shrink();
+        }
+        
+        return _buildSettingsTile(
+          icon: Icons.directions_walk,
+          iconColor: Colors.green,
+          label: 'Step Counter Permissions',
+          value: 'Tap to enable',
+          trailing: Icon(
+            Icons.warning_amber_rounded,
+            size: screenWidth * 0.045,
+            color: Colors.orange,
+          ),
+          onTap: () => _showStepCounterPermissionsDialog(l10n, status),
+        );
+      },
+    );
+  }
+  
+  Future<void> _showStepCounterPermissionsDialog(AppLocalizations l10n, Map<String, dynamic> status) async {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Step Counter Permissions'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (Platform.isAndroid) ...[
+              if (status['needsActivityRecognition'] == true)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Activity Recognition permission is required for step counting.',
+                          style: TextStyle(fontSize: screenWidth * 0.035),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (status['needsBatteryOptimization'] == true)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.battery_alert, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Battery optimization must be disabled to keep step counter running in background.',
+                          style: TextStyle(fontSize: screenWidth * 0.035),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ] else ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.notifications_off, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Notification permission is required for step counter notifications.',
+                        style: TextStyle(fontSize: screenWidth * 0.035),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            const Text(
+              'Would you like to enable these permissions now?',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _enableStepCounterPermissions();
+            },
+            child: const Text('Enable'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await StepsService.instance.openStepCounterSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Future<void> _enableStepCounterPermissions() async {
+    try {
+      final results = await StepsService.instance.requestStepCounterPermissions();
+      
+      if (results.values.any((v) => !v)) {
+        // Some permissions still not granted
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Some permissions were not granted. Please enable them in Settings.'),
+              action: SnackBarAction(
+                label: 'Open Settings',
+                onPressed: () => StepsService.instance.openStepCounterSettings(),
+              ),
+            ),
+          );
+        }
+      } else {
+        // All permissions granted
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Step counter permissions enabled successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error enabling permissions: $e'),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildSettingsTile({

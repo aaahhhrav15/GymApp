@@ -97,6 +97,24 @@ class _StepsDetailScreenState extends State<StepsDetailScreen>
     await _loadPeriodData(stepsProvider, 0);
   }
 
+  Future<void> _refreshStepsData(StepsProvider stepsProvider) async {
+    try {
+      // Refresh steps provider to sync with latest data
+      await stepsProvider.refresh();
+      
+      // Reload period data for current period
+      await _loadPeriodData(stepsProvider, _currentPeriodOffset);
+      
+      // Restart animations for visual feedback
+      _progressAnimationController.reset();
+      _progressAnimationController.forward();
+      _chartAnimationController.reset();
+      _chartAnimationController.forward();
+    } catch (e) {
+      print('Error refreshing steps data: $e');
+    }
+  }
+
   Future<void> _loadPeriodData(StepsProvider stepsProvider, int offset) async {
     final periodData = await stepsProvider.getStepsFor7DayPeriod(offset, todaySteps: stepsProvider.currentSteps);
     final today = DateTime.now();
@@ -332,57 +350,64 @@ class _StepsDetailScreenState extends State<StepsDetailScreen>
               opacity: _fadeAnimation,
               child: Column(
                 children: [
-                  _buildHeader(isDark, stepsColor),
+                  _buildHeader(isDark, stepsColor, stepsProvider),
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                      physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        children: [
-                          SizedBox(height: sectionSpacing),
+                    child: RefreshIndicator(
+                      onRefresh: () async {
+                        await _refreshStepsData(stepsProvider);
+                      },
+                      color: stepsColor,
+                      backgroundColor: cardColor,
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          children: [
+                            SizedBox(height: sectionSpacing),
 
-                          // Permission warning if needed
-                          if (!stepsProvider.isUsingRealPedometer)
-                            _buildPermissionWarning(stepsProvider, l10n, isDark, stepsColor, cardColor),
+                            // Permission warning if needed
+                            if (!stepsProvider.isUsingRealPedometer)
+                              _buildPermissionWarning(stepsProvider, l10n, isDark, stepsColor, cardColor),
 
-                          // Main Progress Circle
-                          _buildProgressCircle(
-                            currentSteps,
-                            dailyGoal,
-                            progressPercentage,
-                            percentage,
-                            pedestrianStatus,
-                            isDark,
-                            stepsColor,
-                            stepsColorLight,
-                            cardColor,
-                            l10n,
-                          ),
+                            // Main Progress Circle
+                            _buildProgressCircle(
+                              currentSteps,
+                              dailyGoal,
+                              progressPercentage,
+                              percentage,
+                              pedestrianStatus,
+                              isDark,
+                              stepsColor,
+                              stepsColorLight,
+                              cardColor,
+                              l10n,
+                            ),
 
-                          SizedBox(height: sectionSpacing),
+                            SizedBox(height: sectionSpacing),
 
-                          // Stats Row
-                          _buildStatsRow(
-                            currentSteps,
-                            dailyGoal,
-                            isDark,
-                            stepsColor,
-                            cardColor,
-                            l10n,
-                          ),
+                            // Stats Row
+                            _buildStatsRow(
+                              currentSteps,
+                              dailyGoal,
+                              isDark,
+                              stepsColor,
+                              cardColor,
+                              l10n,
+                            ),
 
-                          SizedBox(height: sectionSpacing),
+                            SizedBox(height: sectionSpacing),
 
-                          // Weekly Chart
-                          _buildWeeklyChart(isDark, stepsColor, stepsColorLight, cardColor, l10n),
+                            // Weekly Chart
+                            _buildWeeklyChart(isDark, stepsColor, stepsColorLight, cardColor, l10n),
 
-                          SizedBox(height: sectionSpacing),
+                            SizedBox(height: sectionSpacing),
 
-                          // Set Goal Button
-                          _buildSetGoalButton(dailyGoal, stepsProvider, isDark, stepsColor, l10n),
+                            // Set Goal Button
+                            _buildSetGoalButton(dailyGoal, stepsProvider, isDark, stepsColor, l10n),
 
-                          SizedBox(height: screenHeight * 0.1),
-                        ],
+                            SizedBox(height: screenHeight * 0.1),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -395,7 +420,7 @@ class _StepsDetailScreenState extends State<StepsDetailScreen>
     );
   }
 
-  Widget _buildHeader(bool isDark, Color stepsColor) {
+  Widget _buildHeader(bool isDark, Color stepsColor, StepsProvider stepsProvider) {
     final screenWidth = MediaQuery.of(context).size.width;
     final headerPadding = screenWidth * 0.04;
     final buttonSize = screenWidth * 0.11;
@@ -451,7 +476,44 @@ class _StepsDetailScreenState extends State<StepsDetailScreen>
               ),
             ),
           ),
-          SizedBox(width: buttonSize),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: stepsProvider.isLoading ? null : () => _refreshStepsData(stepsProvider),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: buttonSize,
+                height: buttonSize,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.1) : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: isDark
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                ),
+                child: stepsProvider.isLoading
+                    ? SizedBox(
+                        width: iconSize * 0.7,
+                        height: iconSize * 0.7,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: stepsColor,
+                        ),
+                      )
+                    : Icon(
+                        Icons.refresh_rounded,
+                        size: iconSize * 0.7,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+              ),
+            ),
+          ),
         ],
       ),
     );
